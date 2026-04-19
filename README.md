@@ -1,131 +1,261 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="Prism" />
+  <img src="docs/assets/banner.svg" alt="Prism — AI Presentation Studio" />
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version 1.0.0" />
   <img src="https://img.shields.io/badge/license-ISC-green.svg" alt="License ISC" />
-  <img src="https://img.shields.io/badge/language-JS%20%2F%20HTML-yellow.svg" alt="Language JS" />
-  <img src="https://img.shields.io/badge/integration-Groq%20Cloud-blueviolet.svg" alt="Groq SDK" />
+  <img src="https://img.shields.io/badge/stack-Node.js%20%2F%20Vanilla%20JS-yellow.svg" alt="Stack" />
+  <img src="https://img.shields.io/badge/LLM-Llama%203.1%208B-blueviolet.svg" alt="Llama 3.1" />
+  <img src="https://img.shields.io/badge/inference-Groq%20Cloud-orange.svg" alt="Groq Cloud" />
 </p>
 
-Prism is a brutally efficient, single-page presentation builder that turns a single sentence into beautifully formatted, chart-equipped slides.
+**Prism** is a production-ready, single-page AI presentation studio. Describe a topic, pick a theme, and generate a complete, structured slide deck with inline SVG visualizations — exported to a standard 16:9 PDF in one click.
 
 ---
 
-## What even is this?
-Prism is an AI-powered presentation studio wrapped in an elegant web interface. You type in a topic, outline some constraints, and hit generate. Behind the scenes, we coordinate with Groq’s high-speed inference cloud to compose an entire logical slide deck complete with auto-generated inline SVG data visualizations. It’s entirely localized in a single HTML page with a tiny Node backbone, giving you lightning-fast results you can directly export to PDF.
-
-## Why does this exist?
-Building quick slide decks is inherently tedious. You constantly have to fight template menus, worry about bullet-point densities, and dig for clipart just to convey a simple point. Prism was built to cut through that nonsense by treating presentation design as raw data extraction. It prioritizes structure and strict readability rules—making sure content isn't a cramped paragraph and graphs never overlap—while giving you a completely distraction-free interface.
-
 ## Features
-* **1-Click Inference** — Pitch an idea and the engine structures a 5-26 slide narrative instantly utilizing an auto-generated core workflow (e.g., Problem Statement, System Logic).
-* **Inline Visualization Engine** — The LLM natively auto-maps metrics and structures zero-dependency SVG charts avoiding false data/hallucinations perfectly.
-* **Strict Density Boundaries** — Enforces a strict max 4-bullet limit globally so your slides are never cramped or redundant.
-* **No-Hallucination Guardrails** — The AI safely falls back to visual qualitative placeholders over making up fake numbers when generating data diagrams.
-* **Immediate PDF Exports** — Seamlessly packages the DOM layer structure right into a printable presentation file via html2canvas without complex libraries.
+
+| Feature | Detail |
+| :--- | :--- |
+| **LLM-Powered Generation** | Uses Groq's Llama 3.1 8B Instant for fast, structured JSON slide output |
+| **26-Topic Generic Template** | Auto-selects the most relevant slides from a standard academic/engineering template when no topics are specified |
+| **Strict Content Rules** | Max 4 bullets per slide, max 10 words per bullet — enforced both at the prompt and server level |
+| **No-Hallucination Guardrails** | LLM is explicitly instructed to use qualitative markers over fabricated statistics; server validates and sanitizes all SVG output |
+| **11 Themes** | Minimalist, Professional, Dark, Scientific, Cyberpunk, Brutalist, Neo-Brutalist, Colorful, Classic, Kids, Colorblind-Safe |
+| **6 Visual Types** | Bar chart, line chart, pie chart, flow diagram, tree diagram, block diagram — auto-assigned semantically |
+| **Standard 16:9 Export** | PDF exported at exactly 13.33 × 7.5 inches (PowerPoint widescreen standard) via jsPDF + html2canvas |
+| **Keyboard Navigation** | Arrow keys navigate slides; blocked when focus is inside form inputs |
+| **Security hardened** | CORS restricted to localhost, input sanitized server-side, SVG validated against script injection, no secrets committed |
+
+---
 
 ## Architecture
-Prism relies on a decoupled structure where a deeply intelligent Express server guides and validates Groq’s JSON generation layer, while the frontend handles dynamic rendering. We avoid complex build pipelines, allowing UI logic changes to deploy instantly natively.
 
 <p align="center">
   <img src="docs/assets/architecture.svg" alt="Architecture diagram" />
 </p>
 
-## How it works
-You interface with the frontend UI to lock in themes and outline expectations. The backend takes this payload, translates it into strict architectural schema prompts (ensuring proper spacing constraints and vocabulary limits), and runs it through Llama 3.1 8B. The data is returned as a JSON sequence injected with dynamic geometric SVG block strings, and painted straight to the screen.
+```
+Browser (index_v2.html)
+    │
+    │  POST /api/generate  { title, theme, slides[], min/max, toggles }
+    ▼
+Express Server (server.js)
+    │  sanitizeText()  →  validates & clamps all inputs
+    │  buildSystemPrompt()  →  injects theme colors + SVG/density rules
+    │  Groq SDK  →  llama-3.1-8b-instant  (max 8192 tokens)
+    │  validateSVG()  →  rejects <script>, on* attributes
+    │  buildSVG()  →  local fallback if LLM SVG absent/invalid
+    ▼
+JSON { presentation_title, theme_config, slides[] }
+    │
+    ▼
+Browser renders slides  →  html2canvas  →  jsPDF (13.33×7.5 in)  →  .pdf
+```
+
+---
+
+## Data Flow
 
 <p align="center">
   <img src="docs/assets/flow.svg" alt="Request flow" />
 </p>
 
-## Tech stack
+1. User fills form → `generate()` validates input client-side (title required, min ≤ max)
+2. Payload sent to `POST /api/generate`
+3. Server sanitizes all strings, clamps slide count to `[min, max]`
+4. System prompt built with theme colors and density constraints
+5. Groq returns structured JSON; server strips markdown fences, parses, validates
+6. Each slide's `bullets` capped at 4 server-side; `svg_code` validated before use
+7. Response hydrates the viewer; thumbnails and nav controls become active
+8. Export captures each slide as a canvas at 2× scale → JPEG → jsPDF page
 
-| Technology | Role | Why we picked it |
-| :--- | :--- | :--- |
-| **Express** | Main backend runtime | Extremely lightweight and handles JSON limit patching securely on port 3001. |
-| **Vanilla JS & HTML5** | Frontend interface | Avoiding heavy frontend frameworks ensures maximum rendering speed processing dynamic charts natively. |
-| **Groq-SDK** | Cloud LLM integration | Unbeatable response times regarding structural JSON constraint blocks mapping dynamic logic. |
+---
 
-## Getting started
+## Getting Started
 
 ### Prerequisites
-* Node.js
-* NPM or Yarn installed
+
+- Node.js ≥ 18
+- A [Groq Cloud](https://console.groq.com) API key
 
 ### Installation
-Clone the repository and install the backend modules directly tracking `package.json`:
+
 ```bash
-npm install express cors groq-sdk
+git clone https://github.com/your-username/prism.git
+cd prism
+npm install
 ```
 
 ### Configuration
-Currently, API keys are instantiated directly securely in local development blocks (`server.js`). Environmental variable injections are being planned as global configuration bindings.
 
-### Running locally
-Start the explicit node framework:
+Copy the example env file and add your key:
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env`:
+
+```env
+GROQ_API_KEY=your_groq_api_key_here
+```
+
+> The server will refuse to start if `GROQ_API_KEY` is not set.
+
+Optional — restrict CORS origins in production:
+
+```env
+ALLOWED_ORIGINS=https://yourdomain.com
+```
+
+### Running Locally
+
 ```bash
 npm start
 ```
-*The host application interfaces natively at `http://localhost:3001`*
+
+Open **http://localhost:3001**
+
+---
 
 ## Usage
-Simply load the webpage locally and configure an environment mapping boundary:
 
-1. **Title**: "The Future of Space Exploration"
-2. **Theme Selection**: e.g., `Minimalist` or `Cyberpunk` or `Brutalist`.
-3. **Data Constraint Option**: Toggle inline native visuals mapping cleanly. 
-4. **Slide Generation Constraints**: E.g., `Min 5, Max 10 slides`.
+1. **Title** *(required)* — Enter your presentation topic. Press `Enter` or click **Generate presentation**.
+2. **Author** *(optional)* — Appears in the deck metadata.
+3. **Context** *(optional)* — Target audience, key arguments, domain specifics.
+4. **Theme** — Choose from 11 visual themes.
+5. **Min / Max slides** — Slide count is clamped to this range. Min must be ≤ Max (red border if violated).
+6. **Visualizations** — Toggle charts and/or diagrams independently.
+7. **Slide Topics** *(optional)* — Add specific topics manually. Leave empty to use the built-in 26-topic template automatically adapted to your slide count.
+8. Click **Generate presentation** → viewer appears below with thumbnails, slide frame, and speaker notes.
+9. Navigate with **← Prev / Next →** or `Arrow` keys.
+10. Click **Export PDF** to download a standard 16:9 widescreen PDF.
+11. Click **← New** to reset and start a new presentation.
 
-If the prompt lacks explicit slides manually added, the system safely triggers a comprehensive 26-point generic auto-template logic boundary cleanly (e.g. `Problem Statement`, `System Architecture Diagram`, `Future Scope`) and compiles a logically structured response limited implicitly to the slide bounds you set natively! Finally, click **Export PDF** instantly from the presentation viewer when finished.
+---
 
-## Use cases
-* For **Product Managers** that need to prep weekly strategy sync presentations immediately safely bound by strict design parameters instead of tweaking fonts randomly.
-* For **Engineers** forced to summarize complex systems without the pain of visual UI placement tracking.
-* For **Students** that need structured logic outlines the night before a presentation natively bounded by clear hierarchical layouts automatically.
+## Project Structure
 
-## Project structure
-```text
-Prism/
-├── docs/assets         # Bounded UI README vector mappings securely mapped manually
-├── package.json        # Backend explicit configurations & dependencies mapping natively
-├── server.js           # Server application, prompt logic generation limits securely tracked natively
-└── index_v2.html       # The single-page frontend styling, interface bound securely
+```
+prism/
+├── server.js          # Express server — prompt engine, SVG builder, API endpoint
+├── index_v2.html      # Single-page frontend — UI, renderer, PDF export
+├── package.json       # Dependencies and scripts
+├── .env               # Local secrets (gitignored)
+├── .env.example       # Key schema for onboarding
+├── .gitignore         # Ignores .env, node_modules, build artifacts
+└── docs/
+    └── assets/        # SVG assets used in this README
+        ├── banner.svg
+        ├── architecture.svg
+        └── flow.svg
 ```
 
-## API reference
+---
+
+## API Reference
 
 ### `POST /api/generate`
-Communicates frontend configuration parameters natively handling the LLM string.
-* **Body constraints**:
-  * `title` (String) Required topic.
-  * `theme` (String) Defines strict visualization boundaries fallback bounds mapping (e.g. minimalistic padding tracking).
-  * `min_slides` (Int) Defaults bound fallback 5.
-  * `max_slides` (Int) Defaults target 12.
-* **Returns**: Generates bounded JSON block `slides` safely formatting array of points mapped dynamically without hallucinations mapping arrays `[title, bullets (max 4 limits), visuals, layout layout string, svg_code]`. 
 
-## Development
+Generates a complete presentation from the provided parameters.
 
-### Running tests
-Currently tests execute via isolated Node start instances securely:
-```bash
-npm start
+**Request body:**
+
+| Field | Type | Required | Default | Description |
+| :--- | :--- | :---: | :--- | :--- |
+| `title` | `string` | ✅ | — | Presentation topic |
+| `author` | `string` | | `"Unknown"` | Author name or org |
+| `details` | `string` | | `"None"` | Additional context for the LLM |
+| `theme` | `string` | | `"minimalist"` | One of 11 named themes |
+| `min_slides` | `number` | | `5` | Minimum slides (clamped ≥ 3) |
+| `max_slides` | `number` | | `12` | Maximum slides (clamped ≤ 32) |
+| `graphs_enabled` | `boolean` | | `true` | Include bar/line/pie charts |
+| `diagrams_enabled` | `boolean` | | `true` | Include flow/tree/block diagrams |
+| `slides` | `array` | | `[]` | Optional topic list `[{ title, needs_visual, visual_type }]` |
+
+**Success response `200`:**
+
+```json
+{
+  "success": true,
+  "presentation": {
+    "presentation_title": "string",
+    "theme": "minimalist",
+    "theme_config": { "font": "...", "bg": "...", "accent": "...", ... },
+    "slides": [
+      {
+        "id": 1,
+        "title": "string",
+        "subtitle": "string",
+        "bullets": ["max 4 items", "max 10 words each"],
+        "needs_visual": true,
+        "visual_type": "bar_chart",
+        "visual_data": { "labels": [], "values": [], "title": "" },
+        "svg": "<svg>...</svg>",
+        "layout": "title-content-visual-right",
+        "speaker_notes": "string"
+      }
+    ]
+  }
+}
 ```
 
-### Contributing
-We happily take pulls for generating structured internal predefined layout block schemas. Ensure SVG contributions comply with `font-family="system-ui"` strictly handling flat geometric bounds limiting gradients securely globally.
+**Error response `400` / `500`:**
+
+```json
+{ "error": "A non-empty title is required." }
+```
+
+---
+
+## Security
+
+| Control | Implementation |
+| :--- | :--- |
+| API key storage | `.env` file — never committed; hard fail on startup if missing |
+| CORS | Restricted to `localhost:3001` by default; configurable via `ALLOWED_ORIGINS` |
+| Input sanitization | All user strings stripped of HTML tags and dangerous characters server-side |
+| SVG validation | LLM-generated SVG rejected if it contains `<script>` or `on*=` event attributes |
+| Bullet enforcement | Max 4 bullets enforced both in the LLM prompt and post-processing `slice(0, 4)` |
+| Static file exposure | Only `/docs` and the root HTML file are served; `.env` and `server.js` are not reachable |
+| Body size limit | `express.json({ limit: '2mb' })` — prevents oversized payload attacks |
+
+---
+
+## Themes
+
+| Key | Font | Style |
+| :--- | :--- | :--- |
+| `minimalist` | Playfair Display | Clean white, blue accent |
+| `professional` | Merriweather | Navy/purple, corporate |
+| `dark` | Syne | Near-black, indigo glow |
+| `scientific` | Source Serif 4 | Cool blue-grey, data-focused |
+| `cyberpunk` | Orbitron | Dark navy, cyan/magenta neon |
+| `brutalist` | Space Mono | Ivory, red-black |
+| `neo-brutalist` | DM Mono | Warm beige, gold/red |
+| `colorful` | Nunito | Warm orange-purple |
+| `classic` | EB Garamond | Parchment, brown |
+| `kids` | Fredoka One | Pink-teal, playful |
+| `colorblind-safe` | Outfit | High-contrast blue/orange |
+
+---
 
 ## Roadmap
-- [ ] Incorporate dynamic mapping arrays parsing explicit user environmental variables handling keys efficiently.
-- [ ] Save presentation historical backups locally bound securely.
-- [ ] Migrate local `.env` bindings logic manually mapped dynamically avoiding hardcoded values.
+
+- [ ] Regenerate individual slide without re-running full deck
+- [ ] Presentation history — auto-save locally to `localStorage`
+- [ ] PPTX export (in addition to PDF)
+- [ ] Custom slide topic ordering via drag-and-drop
+- [ ] Theme preview before generation
+
+---
 
 ## License
+
 ISC — do whatever you want, just don't blame us.
 
 ---
 
-<p align="center">
-  Made with ☕ and mild existential dread · Antigravity
-</p>
+<p align="center">Made with ☕ and mild existential dread · Antigravity</p>
