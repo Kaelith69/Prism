@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 420" width="100%">
+  <defs>
+    <marker id="flow-arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#2a2a4e" />
+    </marker>
+  </defs>
+
+  <rect width="900" height="420" fill="#ffffff"/>
+
+  <!-- Path configs -->
+  <g fill="#f4f1ec" stroke="#2a2a4e" stroke-width="2">
+    <!-- Step 1 -->
+    <rect x="50" y="170" width="120" height="60" rx="8"/>
+    <!-- Step 2 -->
+    <rect x="230" y="170" width="120" height="60" rx="8"/>
+    <!-- Step 3 decision -->
+    <g transform="translate(450, 200)">
+      <polygon points="0,-40 40,0 0,40 -40,0" fill="#fff5cc" stroke="#d4ab00"/>
+    </g>
+    <!-- Step 4 top -->
+    <rect x="550" y="90" width="120" height="60" rx="8" fill="#e0f2f1" stroke="#26a69a"/>
+    <!-- Step 4 bottom -->
+    <rect x="550" y="250" width="120" height="60" rx="8" fill="#ffebee" stroke="#ff5252"/>
+    <!-- Step 5 -->
+    <rect x="730" y="170" width="120" height="60" rx="8" fill="#1a1a2e" stroke="#1a1a2e"/>
+  </g>
+
+  <!-- Text contents -->
+  <text x="110" y="195" font-family="system-ui, -apple-system, monospace" font-size="14" font-weight="bold" fill="#1a1a2e" text-anchor="middle">Topic Entry</text>
+  <text x="110" y="215" font-family="system-ui, -apple-system, monospace" font-size="11" fill="#6b6b6b" text-anchor="middle">Constraints filled</text>
+
+  <text x="290" y="195" font-family="system-ui, -apple-system, monospace" font-size="14" font-weight="bold" fill="#1a1a2e" text-anchor="middle">LLM Inference</text>
+  <text x="290" y="215" font-family="system-ui, -apple-system, monospace" font-size="11" fill="#6b6b6b" text-anchor="middle">Guardrails Applied</text>
+
+  <text x="450" y="204" font-family="system-ui, -apple-system, monospace" font-size="12" font-weight="bold" fill="#b08d00" text-anchor="middle">Visuals?</text>
+
+  <text x="610" y="115" font-family="system-ui, -apple-system, monospace" font-size="14" font-weight="bold" fill="#1a1a2e" text-anchor="middle">Generate SVG</text>
+  <text x="610" y="135" font-family="system-ui, -apple-system, monospace" font-size="11" fill="#6b6b6b" text-anchor="middle">AI mapped vector</text>
+
+  <text x="610" y="275" font-family="system-ui, -apple-system, monospace" font-size="14" font-weight="bold" fill="#1a1a2e" text-anchor="middle">Fallback Layout</text>
+  <text x="610" y="295" font-family="system-ui, -apple-system, monospace" font-size="11" fill="#6b6b6b" text-anchor="middle">Standard grid structure</text>
+
+  <text x="790" y="195" font-family="system-ui, -apple-system, monospace" font-size="14" font-weight="bold" fill="#ffffff" text-anchor="middle">Paint Screen</text>
+  <text x="790" y="215" font-family="system-ui, -apple-system, monospace" font-size="11" fill="#c4c0b6" text-anchor="middle">HTML DOM / PDF ready</text>
+
+  <!-- Connectors -->
+  <line x1="170" y1="200" x2="220" y2="200" stroke="#2a2a4e" stroke-width="2" marker-end="url(#flow-arrow)"/>
+  <line x1="350" y1="200" x2="400" y2="200" stroke="#2a2a4e" stroke-width="2" marker-end="url(#flow-arrow)"/>
+  
+  <line x1="450" y1="160" x2="450" y2="120" stroke="#26a69a" stroke-width="2"/>
+  <line x1="450" y1="120" x2="540" y2="120" stroke="#26a69a" stroke-width="2" marker-end="url(#flow-arrow)"/>
+  <text x="490" y="110" font-family="system-ui, -apple-system, monospace" font-size="12" fill="#26a69a">Yes</text>
+
+  <line x1="450" y1="240" x2="450" y2="280" stroke="#ff5252" stroke-width="2"/>
+  <line x1="450" y1="280" x2="540" y2="280" stroke="#ff5252" stroke-width="2" marker-end="url(#flow-arrow)"/>
+  <text x="490" y="270" font-family="system-ui, -apple-system, monospace" font-size="12" fill="#ff5252">No</text>
+
+  <line x1="670" y1="120" x2="700" y2="120" stroke="#26a69a" stroke-width="2"/>
+  <line x1="700" y1="120" x2="700" y2="185" stroke="#26a69a" stroke-width="2"/>
+  <line x1="700" y1="185" x2="720" y2="185" stroke="#2a2a4e" stroke-width="2" marker-end="url(#flow-arrow)"/>
+
+  <line x1="670" y1="280" x2="700" y2="280" stroke="#ff5252" stroke-width="2"/>
+  <line x1="700" y1="280" x2="700" y2="215" stroke="#ff5252" stroke-width="2"/>
+  <line x1="700" y1="215" x2="720" y2="215" stroke="#2a2a4e" stroke-width="2" marker-end="url(#flow-arrow)"/>
+</svg>

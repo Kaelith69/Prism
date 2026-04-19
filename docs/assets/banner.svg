@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 200" width="100%">
+  <!-- Background -->
+  <rect width="900" height="200" fill="#1a1a2e"/>
+
+  <!-- Decorative shapes -->
+  <circle cx="100" cy="100" r="140" fill="#2a2a4e" opacity="0.3"/>
+  <circle cx="850" cy="50" r="80" fill="#c84b31" opacity="0.15"/>
+  <line x1="50" y1="150" x2="850" y2="150" stroke="#f4f1ec" stroke-width="1" stroke-dasharray="4 4" opacity="0.1"/>
+  <path d="M 750,0 Q 800,100 900,120" stroke="#4a9c6a" fill="none" stroke-width="2" opacity="0.4"/>
+
+  <!-- Texts -->
+  <text x="450" y="90" font-family="system-ui, -apple-system, monospace" font-size="44" font-weight="bold" fill="#f4f1ec" text-anchor="middle">Prism</text>
+  <text x="450" y="125" font-family="system-ui, -apple-system, monospace" font-size="16" fill="#c4c0b6" text-anchor="middle">AI Presentation Studio powered by Groq Llama 3.1</text>
+
+  <!-- Badges -->
+  <g transform="translate(325, 160)">
+    <rect x="0" y="0" width="60" height="20" rx="4" fill="#3a3a3a"/>
+    <text x="30" y="14" font-family="system-ui, -apple-system, monospace" font-size="10" fill="#ffffff" text-anchor="middle">Express</text>
+    
+    <rect x="70" y="0" width="50" height="20" rx="4" fill="#3a3a3a"/>
+    <text x="95" y="14" font-family="system-ui, -apple-system, monospace" font-size="10" fill="#ffffff" text-anchor="middle">Cors</text>
+
+    <rect x="130" y="0" width="70" height="20" rx="4" fill="#3a3a3a"/>
+    <text x="165" y="14" font-family="system-ui, -apple-system, monospace" font-size="10" fill="#ffffff" text-anchor="middle">GroqSDK</text>
+
+    <rect x="210" y="0" width="55" height="20" rx="4" fill="#3a3a3a"/>
+    <text x="237" y="14" font-family="system-ui, -apple-system, monospace" font-size="10" fill="#ffffff" text-anchor="middle">HTML5</text>
+  </g>
+</svg>

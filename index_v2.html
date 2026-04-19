@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Prism — Presentation Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<!-- Two fonts only: Editorial display + utilitarian mono for UI labels -->
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<style>
+
+/* ─────────────────────────────────────────
+   DESIGN TOKENS — single source of truth
+   ───────────────────────────────────────── */
+:root {
+  /* Color: one primary, one neutral ramp, one signal */
+  --ink:        #0e0e0e;
+  --ink-2:      #3a3a3a;
+  --ink-3:      #6b6b6b;
+  --ink-4:      #9a9a9a;
+  --surface:    #f4f1ec;       /* warm off-white, not sterile */
+  --surface-2:  #eceae4;
+  --surface-3:  #e2dfd7;
+  --border:     #d4d0c8;
+  --border-2:   #c4c0b6;
+  --primary:    #1a1a2e;       /* deep navy — single authority color */
+  --signal:     #c84b31;       /* used sparingly: errors, required marks */
+  --active:     #1a1a2e;       /* same as primary for consistency */
+
+  /* Typography scale — 8 steps, ratio ~1.25 */
+  --text-xs:    0.694rem;   /* 11px */
+  --text-sm:    0.833rem;   /* 13px */
+  --text-base:  1rem;       /* 16px */
+  --text-md:    1.2rem;     /* 19px */
+  --text-lg:    1.44rem;    /* 23px */
+  --text-xl:    1.728rem;   /* 27px */
+  --text-2xl:   2.074rem;   /* 33px */
+  --text-3xl:   2.986rem;   /* 47px */
+
+  /* Spacing — 8px base grid */
+  --s1:  4px;
+  --s2:  8px;
+  --s3:  12px;
+  --s4:  16px;
+  --s5:  24px;
+  --s6:  32px;
+  --s7:  48px;
+  --s8:  64px;
+  --s9:  96px;
+
+  /* Radii — purposeful, not universal */
+  --r1:  3px;   /* inputs, tight elements */
+  --r2:  6px;   /* buttons, tags */
+  --r3:  10px;  /* cards */
+
+  /* Motion — restrained */
+  --ease-out:  cubic-bezier(0.0, 0.0, 0.2, 1);
+  --t-fast:    100ms;
+  --t-med:     180ms;
+  --t-slow:    300ms;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'IBM Plex Mono', 'Courier New', monospace;
+  background: var(--surface);
+  color: var(--ink);
+  min-height: 100vh;
+  font-size: var(--text-base);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Narrow content lane ─── */
+.lane {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 var(--s5);
+}
+
+/* ─── Header — understated, functional ─── */
+header {
+  border-bottom: 1px solid var(--border);
+  padding: var(--s4) 0;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 50;
+}
+.header-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 var(--s5);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.brand {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: var(--text-md);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+}
+.brand-sub {
+  font-size: var(--text-xs);
+  color: var(--ink-4);
+  letter-spacing: 0.02em;
+  margin-left: var(--s3);
+}
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+}
+.status-dot::before {
+  content: '';
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: #4a9c6a;
+  flex-shrink: 0;
+}
+
+/* ─── Page intro — left-aligned, editorial ─── */
+.page-intro {
+  padding: var(--s8) 0 var(--s6);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--s7);
+}
+.page-intro h1 {
+  font-family: 'Libre Baskerville', Georgia, serif;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  max-width: 520px;
+  margin-bottom: var(--s4);
+}
+.page-intro h1 em {
+  font-style: italic;
+  color: var(--ink-2);
+}
+.page-intro p {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  max-width: 440px;
+  line-height: 1.7;
+  font-family: 'IBM Plex Mono', monospace;
+}
+
+/* ─── Section markers — minimal, not decorative ─── */
+.section-marker {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-4);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: var(--s3);
+  font-family: 'IBM Plex Mono', monospace;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+.section-marker::before {
+  content: '';
+  width: 16px; height: 1px;
+  background: var(--border-2);
+}
+
+/* ─── Form structure ─── */
+.form-section {
+  margin-bottom: var(--s7);
+}
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s5);
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s4);
+}
+@media (max-width: 560px) { .field-row { grid-template-columns: 1fr; } }
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+label {
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--ink-2);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-family: 'IBM Plex Mono', monospace;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+.req { color: var(--signal); }
+
+/* ─── Inputs — clean, real border ─── */
+input[type="text"],
+input[type="number"],
+textarea,
+select {
+  background: var(--surface);
+  border: 1px solid var(--border-2);
+  border-radius: var(--r1);
+  padding: var(--s3) var(--s4);
+  color: var(--ink);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-sm);
+  width: 100%;
+  outline: none;
+  transition: border-color var(--t-fast) var(--ease-out),
+              background var(--t-fast) var(--ease-out);
+  appearance: none;
+  -webkit-appearance: none;
+  line-height: 1.5;
+}
+input:hover, textarea:hover, select:hover {
+  border-color: var(--ink-3);
+}
+input:focus, textarea:focus, select:focus {
+  border-color: var(--primary);
+  background: #fff;
+  box-shadow: 0 0 0 2px rgba(26,26,46,0.08);
+}
+input::placeholder, textarea::placeholder {
+  color: var(--ink-4);
+  font-style: italic;
+}
+textarea { resize: vertical; min-height: 84px; }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%236b6b6b' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--s3) center;
+  padding-right: var(--s7);
+  cursor: pointer;
+}
+select option { background: #fff; color: var(--ink); }
+
+/* ─── Toggles — small, honest ─── */
+.toggle-pair {
+  display: flex;
+  gap: var(--s6);
+  flex-wrap: wrap;
+  margin-top: var(--s2);
+}
+.toggle-item {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  cursor: pointer;
+  user-select: none;
+}
+.toggle-track {
+  width: 36px; height: 20px;
+  border-radius: 10px;
+  background: var(--surface-3);
+  border: 1px solid var(--border-2);
+  position: relative;
+  transition: background var(--t-fast) var(--ease-out),
+              border-color var(--t-fast) var(--ease-out);
+  flex-shrink: 0;
+}
+.toggle-track::after {
+  content: '';
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--ink-4);
+  transition: transform var(--t-med) var(--ease-out),
+              background var(--t-fast) var(--ease-out);
+}
+.toggle-track.on {
+  background: var(--primary);
+  border-color: var(--primary);
+}
+.toggle-track.on::after {
+  transform: translateX(16px);
+  background: var(--surface);
+}
+.toggle-label {
+  font-size: var(--text-sm);
+  color: var(--ink-2);
+}
+
+/* ─── Slides builder ─── */
+.slides-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: var(--r3);
+  overflow: hidden;
+}
+.slide-item {
+  display: grid;
+  grid-template-columns: 28px 1fr auto auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  transition: background var(--t-fast) var(--ease-out);
+  animation: rowIn 0.2s var(--ease-out) both;
+}
+.slide-item:last-child { border-bottom: none; }
+.slide-item:hover { background: var(--surface-2); }
+
+.slide-num {
+  font-size: var(--text-xs);
+  color: var(--ink-4);
+  font-weight: 500;
+  width: 28px;
+  text-align: right;
+  padding-right: var(--s2);
+}
+.slide-item input {
+  border-radius: var(--r1);
+  font-size: var(--text-sm);
+  padding: var(--s2) var(--s3);
+  background: transparent;
+  border-color: transparent;
+}
+.slide-item input:hover { border-color: var(--border-2); background: var(--surface); }
+.slide-item input:focus { border-color: var(--primary); background: #fff; }
+
+.vis-ctrl {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-shrink: 0;
+}
+.vis-ctrl input[type="checkbox"] {
+  width: 14px; height: 14px;
+  accent-color: var(--primary);
+  cursor: pointer;
+  padding: 0;
+  border-radius: 2px;
+}
+.vis-ctrl select {
+  width: auto;
+  padding: var(--s1) var(--s5) var(--s1) var(--s2);
+  font-size: var(--text-xs);
+  background-position: right var(--s2) center;
+}
+.slide-del {
+  width: 24px; height: 24px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none;
+  color: var(--ink-4);
+  cursor: pointer;
+  font-size: 1rem;
+  border-radius: var(--r1);
+  transition: color var(--t-fast), background var(--t-fast);
+  flex-shrink: 0;
+}
+.slide-del:hover { color: var(--signal); background: rgba(200,75,49,0.07); }
+
+.btn-add-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-top: none;
+  border-radius: 0 0 var(--r3) var(--r3);
+  color: var(--ink-3);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background var(--t-fast), color var(--t-fast);
+  letter-spacing: 0.04em;
+}
+.btn-add-row:hover { background: var(--surface-3); color: var(--ink); }
+
+/* ─── Empty state for slide builder ─── */
+.slides-empty {
+  padding: var(--s6) var(--s5);
+  text-align: center;
+  color: var(--ink-4);
+  font-size: var(--text-sm);
+  font-style: italic;
+  border: 1px solid var(--border);
+  border-radius: var(--r3) var(--r3) 0 0;
+}
+
+/* ─── Primary action ─── */
+.action-row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  margin-top: var(--s6);
+  padding-top: var(--s6);
+  border-top: 1px solid var(--border);
+}
+.btn-generate {
+  width: 100%;
+  padding: var(--s4) var(--s5);
+  background: var(--primary);
+  color: var(--surface);
+  border: 1px solid var(--primary);
+  border-radius: var(--r2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background var(--t-fast) var(--ease-out),
+              transform var(--t-fast) var(--ease-out),
+              box-shadow var(--t-fast) var(--ease-out);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+}
+.btn-generate:hover:not(:disabled) {
+  background: #2a2a4e;
+  box-shadow: 0 2px 12px rgba(26,26,46,0.22);
+  transform: translateY(-1px);
+}
+.btn-generate:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: none;
+}
+.btn-generate:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-generate svg { flex-shrink: 0; }
+
+/* ─── Loading state ─── */
+.loader {
+  display: none;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s5) 0;
+}
+.loader.on { display: flex; }
+.loader-bar {
+  width: 100%; height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  overflow: hidden;
+}
+.loader-progress {
+  height: 100%;
+  background: var(--primary);
+  border-radius: 1px;
+  width: 0%;
+  transition: width 0.8s var(--ease-out);
+}
+.loader-msg {
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  letter-spacing: 0.04em;
+  min-height: 16px;
+}
+
+/* ─── Error ─── */
+.error-line {
+  display: none;
+  font-size: var(--text-xs);
+  color: var(--signal);
+  padding: var(--s3) var(--s4);
+  background: rgba(200,75,49,0.06);
+  border: 1px solid rgba(200,75,49,0.18);
+  border-radius: var(--r2);
+  letter-spacing: 0.02em;
+}
+.error-line.on { display: block; }
+
+/* ─────────────────────────────────────────
+   VIEWER — presentation output
+   ───────────────────────────────────────── */
+.viewer-section {
+  display: none;
+  margin-top: var(--s8);
+  padding-top: var(--s7);
+  border-top: 2px solid var(--ink);
+  animation: fadeUp var(--t-slow) var(--ease-out) both;
+}
+.viewer-section.on { display: block; }
+
+.viewer-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s5);
+  margin-bottom: var(--s6);
+  flex-wrap: wrap;
+}
+.viewer-title-block {}
+.viewer-pres-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.01em;
+  line-height: 1.3;
+  margin-bottom: var(--s1);
+}
+.viewer-meta {
+  font-size: var(--text-xs);
+  color: var(--ink-4);
+  letter-spacing: 0.04em;
+}
+.viewer-acts {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+  flex-shrink: 0;
+}
+.btn-ghost {
+  padding: var(--s2) var(--s4);
+  background: none;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r2);
+  color: var(--ink-2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.btn-ghost:hover { border-color: var(--ink-2); color: var(--ink); background: var(--surface-2); }
+.btn-solid {
+  padding: var(--s2) var(--s4);
+  background: var(--primary);
+  border: 1px solid var(--primary);
+  border-radius: var(--r2);
+  color: var(--surface);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: background var(--t-fast), box-shadow var(--t-fast), transform var(--t-fast);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.btn-solid:hover { background: #2a2a4e; box-shadow: 0 2px 8px rgba(26,26,46,0.2); transform: translateY(-1px); }
+.btn-solid:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ─── Slide thumbnails ─── */
+.thumb-rail {
+  display: flex;
+  gap: var(--s2);
+  overflow-x: auto;
+  padding-bottom: var(--s3);
+  margin-bottom: var(--s5);
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+.slide-thumb {
+  flex-shrink: 0;
+  width: 100px; height: 63px;
+  border-radius: var(--r2);
+  border: 1.5px solid var(--border);
+  background: var(--surface-2);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: var(--s2);
+  transition: border-color var(--t-fast), background var(--t-fast);
+  position: relative;
+  overflow: hidden;
+}
+.slide-thumb:hover { border-color: var(--ink-3); background: var(--surface-3); }
+.slide-thumb.active { border-color: var(--primary); background: var(--surface); }
+.thumb-idx {
+  position: absolute; top: var(--s1); left: var(--s2);
+  font-size: 9px; color: var(--ink-4); font-weight: 500;
+}
+.thumb-label {
+  font-size: 8px; color: var(--ink-2); line-height: 1.3;
+  overflow: hidden; display: -webkit-box;
+  -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  max-width: 100%;
+}
+
+/* ─── Main slide frame ─── */
+.slide-frame {
+  border: 1px solid var(--border);
+  border-radius: var(--r3);
+  background: #fff;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  padding: var(--s8) var(--s7);
+  transition: opacity var(--t-med) var(--ease-out),
+              transform var(--t-med) var(--ease-out);
+  position: relative;
+  overflow: hidden;
+}
+.slide-frame.transitioning {
+  opacity: 0;
+  transform: translateX(8px);
+}
+
+/* Title slide */
+.slide-title-slide {
+  display: flex; flex-direction: column; justify-content: center;
+  height: 100%; max-width: 480px;
+}
+.slide-kicker {
+  font-size: var(--text-xs);
+  color: var(--ink-4);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: var(--s4);
+  font-family: 'IBM Plex Mono', monospace;
+}
+.slide-h1 {
+  font-family: 'Libre Baskerville', serif;
+  font-size: clamp(1.8rem, 4vw, 3rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin-bottom: var(--s4);
+}
+.slide-subtitle {
+  font-size: var(--text-sm);
+  color: var(--ink-3);
+  line-height: 1.6;
+  max-width: 380px;
+}
+.slide-rule {
+  width: 32px; height: 2px;
+  background: var(--primary);
+  margin-bottom: var(--s5);
+}
+
+/* Content slide */
+.slide-content-title {
+  font-family: 'Libre Baskerville', serif;
+  font-size: var(--text-xl);
+  font-weight: 700;
+  color: var(--ink);
+  letter-spacing: -0.015em;
+  line-height: 1.2;
+  margin-bottom: var(--s5);
+}
+.slide-grid { display: grid; gap: var(--s6); align-items: start; }
+.slide-grid.with-visual { grid-template-columns: 1fr 1fr; }
+.slide-grid.with-visual-bottom { grid-template-rows: auto auto; grid-template-columns: 1fr; }
+
+.slide-bullets { list-style: none; display: flex; flex-direction: column; gap: var(--s4); }
+.slide-bullet {
+  display: grid; grid-template-columns: 16px 1fr; gap: var(--s3);
+  font-size: var(--text-sm); line-height: 1.65; color: var(--ink-2);
+  animation: bulletIn 0.25s var(--ease-out) both;
+}
+.slide-bullet::before {
+  content: '—';
+  color: var(--ink-4);
+  font-size: var(--text-xs);
+  margin-top: 0.35em;
+}
+
+.visual-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  padding: var(--s4);
+  display: flex; align-items: center; justify-content: center;
+  min-height: 180px;
+}
+.visual-panel svg { max-width: 100%; height: auto; }
+
+/* ─── Slide navigation ─── */
+.slide-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+.nav-cluster { display: flex; align-items: center; gap: var(--s2); }
+.btn-nav {
+  padding: var(--s2) var(--s4);
+  background: none;
+  border: 1px solid var(--border-2);
+  border-radius: var(--r2);
+  color: var(--ink-2);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: border-color var(--t-fast), color var(--t-fast), background var(--t-fast);
+  letter-spacing: 0.02em;
+}
+.btn-nav:hover:not(:disabled) { border-color: var(--ink-2); color: var(--ink); background: var(--surface-2); }
+.btn-nav:disabled { opacity: 0.3; cursor: not-allowed; }
+.slide-count {
+  font-size: var(--text-xs);
+  color: var(--ink-4);
+  min-width: 48px;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+/* Hide slide navigation controls until a presentation is loaded */
+.slide-nav { display: none; }
+.slide-nav.ready { display: flex; }
+.btn-notes-tog {
+  padding: var(--s2) var(--s3);
+  background: none; border: none;
+  color: var(--ink-4);
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: var(--text-xs);
+  cursor: pointer;
+  transition: color var(--t-fast);
+  letter-spacing: 0.04em;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.btn-notes-tog:hover { color: var(--ink); }
+
+/* ─── Speaker notes ─── */
+.notes-drawer {
+  display: none;
+  margin-top: var(--s3);
+  padding: var(--s4);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r2);
+  font-size: var(--text-xs);
+  color: var(--ink-3);
+  line-height: 1.7;
+  font-style: italic;
+}
+.notes-drawer.on { display: block; }
+.notes-label {
+  font-style: normal;
+  color: var(--ink-4);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  font-size: 10px;
+  margin-bottom: var(--s2);
+  display: block;
+}
+
+/* ─── Footer ─── */
+footer {
+  margin-top: var(--s9);
+  padding: var(--s6) 0;
+  border-top: 1px solid var(--border);
+}
+.footer-inner {
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 0 var(--s5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+.footer-left {
+  font-size: var(--text-xs);
+  color: var(--ink-4);
+}
+
+/* ─── Animations — only what's needed ─── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes bulletIn {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes rowIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.page-load { animation: fadeUp 0.4s var(--ease-out) both; }
+.page-load-2 { animation: fadeUp 0.4s 0.08s var(--ease-out) both; }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div style="display:flex;align-items:baseline;gap:var(--s1)">
+      <span class="brand">Prism</span>
+      <span class="brand-sub">/ Presentation Studio</span>
+    </div>
+    <div class="status-dot">llama-3.1 · live</div>
+  </div>
+</header>
+
+<main>
+  <div class="lane">
+
+    <!-- Intro -->
+    <div class="page-intro page-load">
+      <h1>Slides from a<br/><em>single sentence.</em></h1>
+      <p>Describe your topic. Choose a style. The rest — content, visuals, layout — is handled.</p>
+    </div>
+
+    <!-- Form -->
+    <div class="page-load-2">
+
+      <!-- Section 1: basics -->
+      <div class="form-section">
+        <div class="section-marker">01 — Details</div>
+        <div class="field-group">
+          <div class="field-row">
+            <div class="field">
+              <label>Title <span class="req">*</span></label>
+              <input type="text" id="ppt-title" placeholder="e.g. The case for solar energy"
+                onkeydown="if(event.key==='Enter'){event.preventDefault();generate();}"/>
+            </div>
+            <div class="field">
+              <label>Author</label>
+              <input type="text" id="ppt-author" placeholder="Your name or org"/>
+            </div>
+          </div>
+          <div class="field">
+            <label>Context <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-4)">(optional)</span></label>
+            <textarea id="ppt-details" placeholder="Target audience, key arguments, specific data to include…"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 2: config -->
+      <div class="form-section">
+        <div class="section-marker">02 — Configuration</div>
+        <div class="field-group">
+          <div class="field-row">
+            <div class="field">
+              <label>Theme</label>
+              <select id="ppt-theme">
+                <option value="minimalist">Minimalist</option>
+                <option value="professional">Professional</option>
+                <option value="dark">Dark</option>
+                <option value="scientific">Scientific</option>
+                <option value="cyberpunk">Cyberpunk</option>
+                <option value="brutalist">Brutalist</option>
+                <option value="neo-brutalist">Neo-Brutalist</option>
+                <option value="colorful">Colorful</option>
+                <option value="classic">Classic</option>
+                <option value="kids">Kids</option>
+                <option value="colorblind-safe">Colorblind Safe</option>
+              </select>
+            </div>
+            <div class="field-row" style="gap:var(--s3)">
+              <div class="field">
+                <label>Min slides</label>
+                <input type="number" id="min-slides" value="5" min="3" max="32"
+                  oninput="validateSlideRange()"/>
+              </div>
+              <div class="field">
+                <label>Max slides</label>
+                <input type="number" id="max-slides" value="10" min="3" max="32"
+                  oninput="validateSlideRange()"/>
+              </div>
+            </div>
+          </div>
+          <div class="field">
+            <label>Visualizations</label>
+            <div class="toggle-pair">
+              <div class="toggle-item" role="switch" aria-checked="true"
+                   onclick="toggleTrack('tg-graphs', this)" tabindex="0"
+                   onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleTrack('tg-graphs',this)}">
+                <div class="toggle-track on" id="tg-graphs"></div>
+                <span class="toggle-label">Charts &amp; graphs</span>
+              </div>
+              <div class="toggle-item" role="switch" aria-checked="true"
+                   onclick="toggleTrack('tg-diagrams', this)" tabindex="0"
+                   onkeydown="if(event.key===' '||event.key==='Enter'){event.preventDefault();toggleTrack('tg-diagrams',this)}">
+                <div class="toggle-track on" id="tg-diagrams"></div>
+                <span class="toggle-label">Diagrams &amp; flows</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section 3: slide builder -->
+      <div class="form-section">
+        <div class="section-marker">03 — Slide Topics <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink-4);font-size:var(--text-xs)">(leave empty to auto-generate)</span></div>
+        <div id="slides-empty" class="slides-empty">No slides added — AI will structure this automatically.</div>
+        <div id="slides-list" class="slides-list" style="display:none"></div>
+        <button class="btn-add-row" onclick="addSlide()">
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+          Add slide topic
+        </button>
+      </div>
+
+      <!-- Generate -->
+      <div class="action-row">
+        <button class="btn-generate" id="generate-btn" onclick="generate()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+          Generate presentation
+        </button>
+
+        <div class="loader" id="loader">
+          <div class="loader-bar"><div class="loader-progress" id="loader-bar"></div></div>
+          <div class="loader-msg" id="loader-msg">Initializing…</div>
+        </div>
+
+        <div class="error-line" id="error-line"></div>
+      </div>
+
+    </div><!-- end page-load-2 -->
+
+    <!-- ─── Viewer ─── -->
+    <div class="viewer-section" id="viewer-section">
+
+      <div class="viewer-head">
+        <div class="viewer-title-block">
+          <div class="viewer-pres-title" id="v-title">—</div>
+          <div class="viewer-meta" id="v-meta"></div>
+        </div>
+        <div class="viewer-acts">
+          <button class="btn-ghost" onclick="resetView()">← New</button>
+          <button class="btn-solid" id="export-btn" onclick="exportPDF()">Export PDF</button>
+        </div>
+      </div>
+
+      <!-- Thumbnails -->
+      <div class="thumb-rail" id="thumb-rail"></div>
+
+      <!-- Slide -->
+      <div class="slide-frame" id="slide-frame"></div>
+
+      <!-- Notes drawer -->
+      <div class="notes-drawer" id="notes-drawer">
+        <span class="notes-label">Speaker notes</span>
+        <span id="notes-text"></span>
+      </div>
+
+      <!-- Controls -->
+      <div class="slide-nav" id="slide-nav">
+        <div class="nav-cluster">
+          <button class="btn-nav" id="prev-btn" onclick="navigate(-1)" disabled>← Prev</button>
+          <span class="slide-count" id="slide-count"></span>
+          <button class="btn-nav" id="next-btn" onclick="navigate(1)">Next →</button>
+        </div>
+        <button class="btn-notes-tog" id="notes-tog" onclick="toggleNotes()">notes</button>
+      </div>
+
+    </div>
+
+  </div><!-- end .lane -->
+</main>
+
+<footer>
+  <div class="footer-inner">
+    <span class="footer-left">Prism — AI Presentation Studio</span>
+    <span class="footer-left">← → keyboard navigation</span>
+  </div>
+</footer>
+
+<script>
+/* ──────────────────────────────
+   State
+────────────────────────────── */
+let slides = [];
+let currentIdx = 0;
+let presentationData = null;
+let notesVisible = false;
+let slideIdCounter = 0;
+let isGenerating = false; // in-flight guard
+
+/* ──────────────────────────────
+   Security: HTML escape helper
+────────────────────────────── */
+function escapeHTML(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/* ──────────────────────────────
+   Toggles
+────────────────────────────── */
+function toggleTrack(id, itemEl) {
+  const track = document.getElementById(id);
+  track.classList.toggle('on');
+  // Sync ARIA state on the parent toggle-item
+  const el = itemEl || track.closest('.toggle-item');
+  if (el) el.setAttribute('aria-checked', track.classList.contains('on'));
+}
+function isOn(id) { return document.getElementById(id).classList.contains('on'); }
+
+/* ──────────────────────────────
+   Slide Builder
+────────────────────────────── */
+function syncListVisibility() {
+  const list = document.getElementById('slides-list');
+  const empty = document.getElementById('slides-empty');
+  const hasItems = list.children.length > 0;
+  list.style.display = hasItems ? 'flex' : 'none';
+  empty.style.display = hasItems ? 'none' : 'block';
+}
+
+function addSlide() {
+  slideIdCounter++;
+  const id = slideIdCounter;
+  const list = document.getElementById('slides-list');
+
+  const div = document.createElement('div');
+  div.className = 'slide-item';
+  div.id = `si-${id}`;
+  div.innerHTML = `
+    <span class="slide-num">${list.children.length + 1}</span>
+    <input type="text" placeholder="Slide title or topic" class="s-title-inp"/>
+    <div class="vis-ctrl">
+      <input type="checkbox" id="vc-${id}" checked onchange="syncVis(${id})"/>
+      <select id="vs-${id}" class="">
+        <option value="auto">auto</option>
+        <option value="bar_chart">bar</option>
+        <option value="line_chart">line</option>
+        <option value="pie_chart">pie</option>
+        <option value="flow_diagram">flow</option>
+        <option value="tree_diagram">tree</option>
+        <option value="block_diagram">block</option>
+        <option value="none">none</option>
+      </select>
+    </div>
+    <button class="slide-del" onclick="removeSlide(${id})" title="Remove">×</button>
+  `;
+  list.appendChild(div);
+  syncListVisibility();
+  renumber();
+}
+
+function removeSlide(id) {
+  const el = document.getElementById(`si-${id}`);
+  if (!el) return; // guard: element may have already been removed
+  el.style.opacity = '0';
+  el.style.transform = 'translateX(8px)';
+  el.style.transition = 'opacity 0.15s, transform 0.15s';
+  setTimeout(() => { el.remove(); renumber(); syncListVisibility(); }, 160);
+}
+
+function renumber() {
+  document.querySelectorAll('#slides-list .slide-num').forEach((el, i) => {
+    el.textContent = i + 1;
+  });
+}
+
+function syncVis(id) {
+  const cb = document.getElementById(`vc-${id}`);
+  const sel = document.getElementById(`vs-${id}`);
+  sel.disabled = !cb.checked;
+  sel.style.opacity = cb.checked ? '1' : '0.4';
+}
+
+function getSlideItems() {
+  return Array.from(document.querySelectorAll('#slides-list .slide-item')).map((item, i) => ({
+    title: item.querySelector('.s-title-inp')?.value.trim() || `Slide ${i + 1}`,
+    needs_visual: item.querySelector('input[type="checkbox"]')?.checked ?? true,
+    visual_type: item.querySelector('select')?.value || 'auto'
+  }));
+}
+
+/* Validate that min <= max and give instant user feedback */
+function validateSlideRange() {
+  const minEl = document.getElementById('min-slides');
+  const maxEl = document.getElementById('max-slides');
+  const min = parseInt(minEl.value) || 3;
+  const max = parseInt(maxEl.value) || 32;
+  if (min > max) {
+    minEl.style.borderColor = 'var(--signal)';
+    maxEl.style.borderColor = 'var(--signal)';
+  } else {
+    minEl.style.borderColor = '';
+    maxEl.style.borderColor = '';
+  }
+}
+
+/* ──────────────────────────────
+   Generate
+────────────────────────────── */
+const LOAD_MSGS = [
+  'Structuring content…',
+  'Drafting slide copy…',
+  'Mapping visualizations…',
+  'Applying theme and layout…',
+  'Finishing up…'
+];
+
+async function generate() {
+  if (isGenerating) return;
+  const btn = document.getElementById('generate-btn'); // single source of truth
+  const title = document.getElementById('ppt-title').value.trim();
+  if (!title) { showError('A title is required to generate slides.'); return; }
+
+  // Read slide range once — prevents stale read in payload vs validation
+  const minV = parseInt(document.getElementById('min-slides').value) || 5;
+  const maxV = parseInt(document.getElementById('max-slides').value) || 10;
+  if (minV > maxV) {
+    showError('Min slides cannot be greater than max slides.');
+    return;
+  }
+
+  isGenerating = true;
+  const payload = {
+    title,
+    author:           document.getElementById('ppt-author').value.trim(),
+    details:          document.getElementById('ppt-details').value.trim(),
+    theme:            document.getElementById('ppt-theme').value,
+    min_slides:       minV,
+    max_slides:       maxV,
+    graphs_enabled:   isOn('tg-graphs'),
+    diagrams_enabled: isOn('tg-diagrams'),
+    slides:           getSlideItems()
+  };
+
+  clearError();
+  setLoading(true);
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+
+  // Animate progress bar
+  let msgIdx = 0;
+  const bar   = document.getElementById('loader-bar');
+  const msgEl = document.getElementById('loader-msg');
+  const progInterval = setInterval(() => {
+    const pct = Math.min((msgIdx + 1) * 18, 90);
+    bar.style.width = pct + '%';
+    msgEl.textContent = LOAD_MSGS[msgIdx] || LOAD_MSGS[LOAD_MSGS.length - 1];
+    msgIdx++;
+  }, 900);
+
+  try {
+    const res = await fetch('/api/generate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.error || 'Generation failed');
+
+    clearInterval(progInterval);
+    bar.style.width = '100%';
+    msgEl.textContent = 'Done.';
+
+    await new Promise(r => setTimeout(r, 300));
+
+    presentationData = data.presentation;
+    slides = presentationData.slides || [];
+    renderPresentation();
+  } catch (err) {
+    clearInterval(progInterval);
+    showError(err.message);
+  } finally {
+    isGenerating = false;
+    setLoading(false);
+    bar.style.width = '0%';
+    btn.disabled = false;
+    btn.textContent = 'Generate presentation';
+  }
+}
+
+/* ──────────────────────────────
+   Render
+────────────────────────────── */
+function renderPresentation() {
+  currentIdx = 0;
+  notesVisible = false; // reset notes state for new presentation
+  document.getElementById('notes-drawer').classList.remove('on');
+  document.getElementById('notes-tog').textContent = 'notes';
+
+  document.getElementById('v-title').textContent = presentationData.presentation_title || 'Untitled';
+  document.getElementById('v-meta').textContent =
+    `${slides.length} slides · ${presentationData.theme || 'minimalist'} theme`;
+
+  renderThumbs();
+  renderSlide(0);
+
+  // Make nav controls visible now that a presentation exists
+  document.getElementById('slide-nav').classList.add('ready');
+
+  const vs = document.getElementById('viewer-section');
+  vs.classList.add('on');
+  vs.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderThumbs() {
+  document.getElementById('thumb-rail').innerHTML = slides.map((s, i) => `
+    <div class="slide-thumb ${i === 0 ? 'active' : ''}" id="th-${i}" onclick="goTo(${i})">
+      <span class="thumb-idx">${i + 1}</span>
+      <span class="thumb-label">${escapeHTML(s.title)}</span>
+    </div>
+  `).join('');
+}
+
+function renderSlide(idx) {
+  // Bounds guard
+  if (!slides.length || idx < 0 || idx >= slides.length) return;
+  currentIdx = idx;
+  const slide = slides[idx];
+
+  // Sync active thumbnail and scroll it into view
+  document.querySelectorAll('.slide-thumb').forEach((t, i) => {
+    t.classList.toggle('active', i === idx);
+    if (i === idx) t.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  });
+
+  const frame = document.getElementById('slide-frame');
+  frame.classList.add('transitioning');
+
+  setTimeout(() => {
+    frame.innerHTML = buildSlideHTML(slide, idx);
+    frame.classList.remove('transitioning');
+  }, 120);
+
+  // Notes
+  document.getElementById('notes-text').textContent = slide.speaker_notes || '—';
+  document.getElementById('slide-count').textContent = `${idx + 1} / ${slides.length}`;
+  document.getElementById('prev-btn').disabled = idx === 0;
+  document.getElementById('next-btn').disabled = idx === slides.length - 1;
+}
+
+function buildSlideHTML(slide, idx) {
+  const isTitleSlide = idx === 0 || slide.layout === 'title-only';
+
+  if (isTitleSlide) {
+    return `
+      <div class="slide-title-slide">
+        <div class="slide-kicker">Presentation · ${idx + 1} of ${slides.length}</div>
+        <div class="slide-rule"></div>
+        <div class="slide-h1">${escapeHTML(slide.title)}</div>
+        ${slide.subtitle ? `<div class="slide-subtitle">${escapeHTML(slide.subtitle)}</div>` : ''}
+      </div>`;
+  }
+
+  const bullets = (slide.bullets || []).map((b, bi) =>
+    `<li class="slide-bullet" style="animation-delay:${bi * 60}ms"><span>${escapeHTML(b)}</span></li>`
+  ).join('');
+
+  const hasVis = slide.needs_visual && slide.svg;
+  const visualHTML = hasVis ? `<div class="visual-panel">${slide.svg}</div>` : '';
+
+  // Support right-side AND bottom layouts for visuals
+  let gridClass = 'slide-grid';
+  if (hasVis) {
+    if (slide.layout === 'title-content-visual-right') gridClass = 'slide-grid with-visual';
+    else if (slide.layout === 'title-content-visual-bottom') gridClass = 'slide-grid with-visual-bottom';
+  }
+
+  return `
+    <div class="slide-content-title">${escapeHTML(slide.title)}</div>
+    <div class="${gridClass}">
+      <ul class="slide-bullets">${bullets}</ul>
+      ${visualHTML}
+    </div>`;
+}
+
+/* ──────────────────────────────
+   Navigation
+────────────────────────────── */
+function navigate(dir) {
+  const next = currentIdx + dir;
+  if (next >= 0 && next < slides.length) renderSlide(next);
+}
+function goTo(idx) { renderSlide(idx); }
+function toggleNotes() {
+  notesVisible = !notesVisible;
+  document.getElementById('notes-drawer').classList.toggle('on', notesVisible);
+  document.getElementById('notes-tog').textContent = notesVisible ? 'hide notes' : 'notes';
+}
+
+/* ──────────────────────────────
+   PDF Export
+────────────────────────────── */
+let isExporting = false;
+let _errorDismissTimer = null; // track auto-dismiss timer
+async function exportPDF() {
+  if (isExporting || !slides.length) return; // guard: no slides = nothing to export
+  isExporting = true;
+  const btn = document.getElementById('export-btn');
+  const savedIdx = currentIdx;
+  btn.disabled = true;
+  btn.textContent = 'Exporting…';
+
+  try {
+    const { jsPDF } = window.jspdf;
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'in', format: [13.33, 7.5] });
+    const W = 13.33, H = 7.5;
+
+    for (let i = 0; i < slides.length; i++) {
+      if (i > 0) pdf.addPage();
+      renderSlide(i);
+      // Wait for the 120ms CSS transition + buffer before capture
+      await new Promise(r => setTimeout(r, 500));
+      const el = document.getElementById('slide-frame');
+      const canvas = await html2canvas(el, {
+        scale: 2, useCORS: true,
+        backgroundColor: '#ffffff',
+        logging: false
+      });
+      pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, W, H);
+    }
+
+    pdf.save(`${presentationData?.presentation_title || 'presentation'}.pdf`);
+  } catch (e) {
+    showError('PDF export failed: ' + e.message);
+  } finally {
+    isExporting = false;
+    renderSlide(savedIdx);
+    btn.disabled = false;
+    btn.textContent = 'Export PDF';
+  }
+}
+
+/* ──────────────────────────────
+   Utils
+────────────────────────────── */
+function setLoading(on) {
+  document.getElementById('loader').classList.toggle('on', on);
+}
+function showError(msg) {
+  // Cancel any previous auto-dismiss timer before setting a new one
+  if (_errorDismissTimer) clearTimeout(_errorDismissTimer);
+  const el = document.getElementById('error-line');
+  el.textContent = msg;
+  el.classList.add('on');
+  _errorDismissTimer = setTimeout(() => {
+    el.classList.remove('on');
+    _errorDismissTimer = null;
+  }, 6000);
+}
+function clearError() {
+  if (_errorDismissTimer) { clearTimeout(_errorDismissTimer); _errorDismissTimer = null; }
+  document.getElementById('error-line').classList.remove('on');
+}
+function resetView() {
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Reset all presentation state so next generation starts fresh
+  slides = [];
+  presentationData = null;
+  currentIdx = 0;
+  notesVisible = false;
+  document.getElementById('notes-drawer').classList.remove('on');
+  document.getElementById('notes-tog').textContent = 'notes';
+  document.getElementById('slide-nav').classList.remove('ready');
+  document.getElementById('slide-count').textContent = '';
+  setTimeout(() => {
+    document.getElementById('viewer-section').classList.remove('on');
+  }, 500);
+}
+
+document.addEventListener('keydown', e => {
+  // Only fire keyboard nav when NOT focused inside a text input or textarea
+  const tag = document.activeElement?.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+  if (!presentationData) return;
+  if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
+  if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
+});
+</script>
+</body>
+</html>

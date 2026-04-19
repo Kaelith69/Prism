@@ -1,0 +1,27 @@
+## Core
+.env
+.env.*
+node_modules/
+dist/
+build/
+coverage/
+
+## Logs
+*.log
+logs/
+
+## OS
+.DS_Store
+Thumbs.db
+
+## IDE
+.vscode/
+.idea/
+
+## Runtime
+*.pid
+*.seed
+
+## Others
+*.pem
+*.key
