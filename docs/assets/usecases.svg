@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 340" width="100%">
+  <rect width="1000" height="340" fill="#0f172a" rx="12"/>
+
+  <text x="500" y="36" font-family="'Courier New', Courier, monospace" font-size="14" font-weight="bold"
+        fill="#e2e8f0" text-anchor="middle" letter-spacing="2">USE CASES</text>
+  <line x1="200" y1="46" x2="800" y2="46" stroke="#1e293b" stroke-width="1"/>
+
+  <!-- Card 1: Academia -->
+  <rect x="30" y="65" width="175" height="235" rx="10" fill="#0d1b2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="30" y="65" width="175" height="6" rx="5" fill="#38bdf8"/>
+  <text x="117" y="98" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="bold" fill="#38bdf8" text-anchor="middle">Academia</text>
+  <text x="117" y="118" font-family="'Courier New', Courier, monospace" font-size="38" text-anchor="middle">🎓</text>
+  <text x="55" y="162" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Research summaries</text>
+  <text x="55" y="181" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Conference papers</text>
+  <text x="55" y="200" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Lecture slides</text>
+  <text x="55" y="219" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Scientific theme</text>
+  <text x="55" y="238" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Data flow diagrams</text>
+  <text x="117" y="280" font-family="'Courier New', Courier, monospace" font-size="9" fill="#475569" text-anchor="middle">theme: scientific</text>
+
+  <!-- Card 2: Business -->
+  <rect x="225" y="65" width="175" height="235" rx="10" fill="#0d1b2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="225" y="65" width="175" height="6" rx="5" fill="#a78bfa"/>
+  <text x="312" y="98" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="bold" fill="#a78bfa" text-anchor="middle">Business</text>
+  <text x="312" y="118" font-family="'Courier New', Courier, monospace" font-size="38" text-anchor="middle">💼</text>
+  <text x="248" y="162" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Pitch decks</text>
+  <text x="248" y="181" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Quarterly reviews</text>
+  <text x="248" y="200" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Stakeholder briefs</text>
+  <text x="248" y="219" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ KPI dashboards</text>
+  <text x="248" y="238" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Bar &amp; line charts</text>
+  <text x="312" y="280" font-family="'Courier New', Courier, monospace" font-size="9" fill="#475569" text-anchor="middle">theme: professional</text>
+
+  <!-- Card 3: Engineering -->
+  <rect x="420" y="65" width="175" height="235" rx="10" fill="#0d1b2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="420" y="65" width="175" height="6" rx="5" fill="#4ade80"/>
+  <text x="507" y="98" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="bold" fill="#4ade80" text-anchor="middle">Engineering</text>
+  <text x="507" y="118" font-family="'Courier New', Courier, monospace" font-size="38" text-anchor="middle">⚙️</text>
+  <text x="443" y="162" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ System architecture</text>
+  <text x="443" y="181" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Tech design docs</text>
+  <text x="443" y="200" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Sprint demos</text>
+  <text x="443" y="219" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Flow diagrams</text>
+  <text x="443" y="238" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Tree/block visuals</text>
+  <text x="507" y="280" font-family="'Courier New', Courier, monospace" font-size="9" fill="#475569" text-anchor="middle">theme: dark / brutalist</text>
+
+  <!-- Card 4: Education -->
+  <rect x="615" y="65" width="175" height="235" rx="10" fill="#0d1b2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="615" y="65" width="175" height="6" rx="5" fill="#fb923c"/>
+  <text x="702" y="98" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="bold" fill="#fb923c" text-anchor="middle">Education</text>
+  <text x="702" y="118" font-family="'Courier New', Courier, monospace" font-size="38" text-anchor="middle">📚</text>
+  <text x="638" y="162" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Classroom lessons</text>
+  <text x="638" y="181" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Tutorial decks</text>
+  <text x="638" y="200" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Interactive overviews</text>
+  <text x="638" y="219" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Colorblind-safe</text>
+  <text x="638" y="238" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Kids theme option</text>
+  <text x="702" y="280" font-family="'Courier New', Courier, monospace" font-size="9" fill="#475569" text-anchor="middle">theme: colorful / kids</text>
+
+  <!-- Card 5: Personal -->
+  <rect x="810" y="65" width="160" height="235" rx="10" fill="#0d1b2e" stroke="#1e3a5f" stroke-width="1.5"/>
+  <rect x="810" y="65" width="160" height="6" rx="5" fill="#fb7185"/>
+  <text x="890" y="98" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="bold" fill="#fb7185" text-anchor="middle">Personal</text>
+  <text x="890" y="118" font-family="'Courier New', Courier, monospace" font-size="38" text-anchor="middle">🚀</text>
+  <text x="828" y="162" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Portfolio decks</text>
+  <text x="828" y="181" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Side project pitches</text>
+  <text x="828" y="200" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Hackathon slides</text>
+  <text x="828" y="219" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Talk proposals</text>
+  <text x="828" y="238" font-family="'Courier New', Courier, monospace" font-size="10" fill="#94a3b8">▸ Cyberpunk theme</text>
+  <text x="890" y="280" font-family="'Courier New', Courier, monospace" font-size="9" fill="#475569" text-anchor="middle">theme: cyberpunk</text>
+
+  <!-- Bottom note -->
+  <text x="500" y="320" font-family="'Courier New', Courier, monospace" font-size="10" fill="#334155"
+        text-anchor="middle">all use cases produce a standard 16:9 widescreen PDF · export in one click</text>
+</svg>

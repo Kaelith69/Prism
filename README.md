@@ -48,7 +48,7 @@ The LLM is explicitly told not to invent statistics. It uses qualitative markers
 | :--- | :--- |
 | **LLM-Powered Generation** | Groq's Llama 3.1 8B Instant — fast, structured JSON output, no hallucinated percentages |
 | **26-Topic Generic Template** | Leave the topic list empty and Prism auto-selects the most relevant slides from a standard academic/engineering template |
-| **Strict Content Rules** | Max 4 bullets per slide, max 10 words per bullet — enforced at the prompt level *and* post-processing. Double-enforced, because trust is earned |
+| **Strict Content Rules** | Max 4 bullets per slide, max 10 words per bullet — enforced at the prompt level *and* post-processing. Double-enforced because trust is earned |
 | **No-Hallucination Guardrails** | Qualitative framing over fabricated data; server validates and sanitizes all SVG output |
 | **11 Themes** | Minimalist, Professional, Dark, Scientific, Cyberpunk, Brutalist, Neo-Brutalist, Colorful, Classic, Kids, Colorblind-Safe |
 | **6 Visual Types** | Bar chart, line chart, pie chart, flow diagram, tree diagram, block diagram — semantically auto-assigned |
@@ -58,9 +58,29 @@ The LLM is explicitly told not to invent statistics. It uses qualitative markers
 
 ---
 
-## How It Works
+## Use Cases
 
-### Architecture
+<p align="center">
+  <img src="docs/assets/usecases.svg" alt="Prism Use Cases" />
+</p>
+
+Prism doesn't care what you're presenting. As long as you give it a topic, it will produce something structured and coherent. Whether that's a PhD defence or a slide deck explaining to your team why the deployment broke on Friday — it will handle it.
+
+---
+
+## Architecture
+
+<p align="center">
+  <img src="docs/assets/architecture.svg" alt="Prism System Architecture" />
+</p>
+
+Three zones. One request. No magic.
+
+- **Browser** — the UI, the slide renderer, and the PDF exporter. Vanilla JS, no frameworks. It knows how to build a form, talk to an API, and capture DOM to canvas. That's its whole job.
+- **Express Server** — the pipeline. It sanitizes input, builds the system prompt, calls Groq, parses the response, validates SVGs, and builds fallback visuals when the LLM gets creative with the SVG spec. It also refuses to start without an API key, which is the most security-conscious thing it does.
+- **Groq Cloud** — the actual intelligence. Llama 3.1 8B Instant running on Groq's inference hardware. Returns structured JSON. Fast enough that you'll wonder if it actually ran.
+
+The only external dependency is Groq. Everything else runs locally.
 
 ```
 Browser (index_v2.html)
@@ -80,31 +100,42 @@ JSON { presentation_title, theme_config, slides[] }
 Browser renders slides  →  html2canvas  →  jsPDF (13.33×7.5 in)  →  .pdf
 ```
 
-### Request Flow
-
-1. User fills the form → `generate()` validates input client-side (title required, min ≤ max)
-2. Payload sent to `POST /api/generate`
-3. Server sanitizes all strings, clamps slide count to `[min, max]`
-4. System prompt built with theme colors and density constraints
-5. Groq returns structured JSON; server strips markdown fences, parses, validates
-6. Each slide's `bullets` capped at 4 server-side; `svg_code` validated before use
-7. Response hydrates the viewer; thumbnails and nav controls become active
-8. Export captures each slide as a canvas at 2× scale → JPEG → jsPDF page
-
 ---
 
-## Requirements
+## Data Flow
 
-- **Node.js ≥ 18** — if you're on something older, update. The ecosystem has moved on.
-- **A [Groq Cloud](https://console.groq.com) API key** — free tier exists and is more than enough for this
-- **npm** — comes with Node.js, you're fine
-- **A browser** — yes, this is a requirement
+<p align="center">
+  <img src="docs/assets/flow.svg" alt="Prism Request Data Flow" />
+</p>
+
+A complete lifecycle, step by step:
+
+| Step | Where | What happens |
+| :---: | :--- | :--- |
+| 1 | Browser | User fills the form — topic, theme, slide count, context |
+| 2 | Browser | Client validates: title required, min ≤ max. Red border if violated, no request sent |
+| 3 | Browser → Server | `POST /api/generate` with full JSON payload, CORS restricted to localhost |
+| 4 | Server | `sanitizeText()` strips HTML, clamps slide count to `[3..32]` |
+| 5 | Server | `buildSystemPrompt()` injects theme tokens, visual rules, 26-topic template fallback |
+| 6 | Server → Groq | Llama 3.1 8B Instant runs inference, returns structured JSON in ~1–3s |
+| 7 | Server | Strips markdown fences, `JSON.parse()`, enforces 4-bullet cap via `slice(0, 4)`, validates SVG |
+| 8 | Server | `buildSVG()` generates local fallback chart if LLM SVG is absent or failed validation |
+| 9 | Server → Browser | Clean `{ success, slides[], theme_config }` response |
+| 10 | Browser | Deck hydrated into viewer — thumbnails, slide frame, speaker notes become active |
+| 11 | Browser | User clicks **Export PDF** → html2canvas at 2× scale → JPEG → jsPDF 13.33×7.5in |
 
 ---
 
 ## Getting Started
 
-### 1. Clone & Install
+### Requirements
+
+- **Node.js ≥ 18** — if you're on something older, update. The ecosystem has moved on.
+- **A [Groq Cloud](https://console.groq.com) API key** — free tier exists and is more than enough for this
+- **npm** — comes with Node.js
+- **A browser** — yes, this is technically a requirement
+
+### Installation
 
 ```bash
 git clone https://github.com/your-username/prism.git
@@ -114,7 +145,7 @@ npm install
 
 Installs four dependencies. That's it. The entire thing is Express, Groq SDK, dotenv, and cors. No build step. No webpack. No configuration files for your configuration files.
 
-### 2. Add Your API Key
+### Configuration
 
 ```bash
 cp .env.example .env
@@ -134,28 +165,28 @@ Optionally, restrict CORS for production:
 ALLOWED_ORIGINS=https://yourdomain.com
 ```
 
-### 3. Run It
+### Run
 
 ```bash
 npm start
 ```
 
-Open **http://localhost:3001** in your browser.
+Open **http://localhost:3001**. That's it. There's no step 4.
 
 ---
 
 ## Usage
 
-1. **Title** *(required)* — What the presentation is about. Be descriptive; the LLM is not a mind-reader.
+1. **Title** *(required)* — What the presentation is about. Be descriptive; the LLM is not a mind reader.
 2. **Author** *(optional)* — Your name. Or a pseudonym. No judgment.
 3. **Context** *(optional)* — Target audience, key arguments, domain specifics. More context = better slides.
 4. **Theme** — 11 options. Cyberpunk remains the correct choice.
-5. **Min / Max Slides** — Slide count is clamped to this range. Min must be ≤ Max. A red border appears if it isn't. The border is the error message.
+5. **Min / Max Slides** — Slide count is clamped to this range. Min must be ≤ Max. A red border appears if it isn't.
 6. **Visualizations** — Toggle charts and/or diagrams independently.
 7. **Slide Topics** *(optional)* — Add specific topics manually. Leave empty to use the built-in 26-topic template, automatically adapted to your slide count.
 8. Click **Generate presentation** → viewer appears with thumbnails, slide frame, and speaker notes.
 9. Navigate with **← Prev / Next →** or your keyboard arrow keys.
-10. Click **Export PDF** → standard 16:9 widescreen PDF, ready for projection or emailing to someone who definitely won't read it.
+10. Click **Export PDF** → standard 16:9 widescreen PDF.
 11. Click **← New** to reset and start over.
 
 ---
@@ -171,10 +202,11 @@ prism/
 ├── .env.example       # The template. Safe to commit. Already committed.
 ├── .gitignore         # Ignores .env, node_modules, and your past mistakes
 └── docs/
-    └── assets/        # SVG assets used in this README
-        ├── banner.svg
-        ├── architecture.svg
-        └── flow.svg
+    └── assets/
+        ├── banner.svg          # Header banner (this README)
+        ├── architecture.svg    # System architecture diagram
+        ├── flow.svg            # Request data flow diagram
+        └── usecases.svg        # Use case overview
 ```
 
 ---
@@ -183,7 +215,7 @@ prism/
 
 ### `POST /api/generate`
 
-Generates a complete presentation. Accepts JSON. Returns JSON. Simple stuff.
+Generates a complete presentation. Accepts JSON. Returns JSON.
 
 **Request body:**
 
@@ -207,7 +239,7 @@ Generates a complete presentation. Accepts JSON. Returns JSON. Simple stuff.
   "presentation": {
     "presentation_title": "string",
     "theme": "minimalist",
-    "theme_config": { "font": "...", "bg": "...", "accent": "...", "..." : "..." },
+    "theme_config": { "font": "...", "bg": "...", "accent": "..." },
     "slides": [
       {
         "id": 1,
@@ -243,9 +275,9 @@ Because "it works locally" is not a security posture.
 | **API key storage** | `.env` file — never committed; hard failure on startup if missing |
 | **CORS** | Restricted to `localhost:3001` by default; configurable via `ALLOWED_ORIGINS` |
 | **Input sanitization** | All user strings stripped of HTML tags and dangerous characters server-side |
-| **SVG validation** | LLM-generated SVG is rejected if it contains `<script>` or `on*=` event attributes |
+| **SVG validation** | LLM-generated SVG rejected if it contains `<script>` or `on*=` event attributes |
 | **Bullet enforcement** | Max 4 bullets enforced in the prompt *and* `slice(0, 4)` post-processing |
-| **Static file exposure** | Only `/docs` and the root HTML are served; `.env` and `server.js` are not reachable via HTTP |
+| **Static file exposure** | Only `/docs` and root HTML are served; `.env` and `server.js` are not reachable via HTTP |
 | **Body size limit** | `express.json({ limit: '2mb' })` — prevents oversized payload attacks |
 
 ---
