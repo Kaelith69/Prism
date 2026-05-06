@@ -923,7 +923,7 @@ footer {
               <div class="field">
                 <label>Min slides</label>
                 <input type="number" id="min-slides" value="5" min="3" max="32"
-                  oninput="validateSlideRange()"/>
+                  oninput="validateSlideRange()" onkeydown="if(['e','+','-'].includes(event.key)) event.preventDefault();"/>
               </div>
               <div class="field">
                 <label>Max slides</label>
@@ -1039,6 +1039,34 @@ let notesVisible = false;
 let slideIdCounter = 0;
 let isGenerating = false; // in-flight guard
 let currentAbortController = null;
+
+/* ──────────────────────────────
+   Safe fetch-JSON helper
+   Prevents "Unexpected token '<'" when the server returns HTML
+   (e.g. 404 page, Express crash page, server not running).
+────────────────────────────── */
+async function safeJSON(res) {
+  const ct = res.headers.get('content-type') || '';
+  if (ct.includes('application/json')) {
+    return res.json();
+  }
+  // Server returned non-JSON — extract a readable message
+  let bodyText = '';
+  try { bodyText = await res.text(); } catch { /* ignore */ }
+  // Pull text out of Express HTML error pages like <pre>Cannot POST /api/...</pre>
+  const preOpen  = bodyText.indexOf('<pre>');
+  const preClose = bodyText.indexOf('</pre>');
+  const detail   = (preOpen !== -1 && preClose !== -1)
+    ? bodyText.slice(preOpen + 5, preClose).trim()
+    : bodyText.slice(0, 100).trim();
+  const url = res.url ? new URL(res.url).pathname : '';
+  throw new Error(
+    res.status === 404
+      ? 'Route not found: ' + url + '. Hard-refresh (Ctrl+Shift+R) and restart the server.'
+      : 'Server error ' + res.status + (url ? ' on ' + url : '') + ': ' + detail
+  );
+}
+
 
 /* ──────────────────────────────
    Security helpers
@@ -1209,8 +1237,8 @@ const UI_THEMES = {
     border: '#C0D0DC', border2: '#A8B8C8',
     primary: '#0072B2', signal: '#CC3311', btnText: '#ffffff',
     uiRadius: '4px', uiBorderW: '2px', uiShadow: '0 4px 12px rgba(0, 114, 178, 0.15)', uiShadowHover: '0 6px 16px rgba(0, 114, 178, 0.25)'
-  }
-,  claude: {
+  },
+  claude: {
     font: 'Plus Jakarta Sans',
     surface: '#FAF9F7', surface2: '#F0EBE3', surface3: '#E6DDD4',
     ink: '#1C1917', ink2: '#3D2E28', ink3: '#78584E', ink4: '#A88278',
@@ -1245,32 +1273,24 @@ function applyUITheme(key) {
   r.setProperty('--ui-shadow-hover', t.uiShadowHover || '0 2px 12px rgba(0,0,0,0.22)');
   // Apply theme display font to the brand and page heading
   const displayFont = `'${t.font}', Georgia, serif`;
-  document.querySelector('.brand').style.fontFamily          = displayFont;
-  document.querySelector('.page-intro h1').style.fontFamily  = displayFont;
+  const brandEl = document.querySelector('.brand');
+  const headingEl = document.querySelector('.page-intro h1');
+  if (brandEl)   brandEl.style.fontFamily   = displayFont;
+  if (headingEl) headingEl.style.fontFamily = displayFont;
 }
 
-function resetUITheme() {
-  const r = document.documentElement.style;
-  ['--surface','--surface-2','--surface-3',
-   '--ink','--ink-2','--ink-3','--ink-4',
-   '--border','--border-2','--primary','--active','--signal','--btn-text'
-  ].forEach(v => r.removeProperty(v));
-  // Restore default fonts
-  document.querySelector('.brand').style.fontFamily         = '';
-  document.querySelector('.page-intro h1').style.fontFamily = '';
-}
+// resetUITheme removed — unused (applyUITheme handles all transitions)
 
 // Wire theme select to live preview
 // Also re-applies slide frame theme if a presentation is already loaded
 document.getElementById('ppt-theme').addEventListener('change', function() {
   applyUITheme(this.value);
-  // If slides are already rendered, also update the slide frame theme
-  // so the preview stays in sync with the selected theme
+  // If slides are already rendered, update slide frame theme and re-build SVGs
   if (presentationData?.theme_config) {
-    // Build a transient theme config from UI_THEMES to preview the new theme
     const previewKey = this.value;
     const ut = UI_THEMES[previewKey];
     if (ut) {
+      // Update slide frame colors + font immediately
       applyTheme({
         bg:        ut.surface,
         text:      ut.ink,
@@ -1278,6 +1298,22 @@ document.getElementById('ppt-theme').addEventListener('change', function() {
         secondary: ut.ink3,
         font:      ut.font
       });
+      // Re-fetch visuals with the new theme so SVG colors update
+      if (slides.length && !isGenerating && !isExporting) {
+        fetch('/api/generate/visuals', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ slides, theme: previewKey })
+        })
+        .then(r => safeJSON(r))
+        .then(d => {
+          if (d.success && d.svgs) {
+            slides.forEach(s => { if (d.svgs[s.id]) s.svg = d.svgs[s.id]; });
+            renderSlide(currentIdx);
+          }
+        })
+        .catch(() => {}); // silent — theme color update is best-effort
+      }
     }
   }
 });
@@ -1367,9 +1403,9 @@ function addSlide() {
   let maxV = parseInt(maxEl.value, 10) || 10;
   
   if (currentCount > maxV) {
-    maxEl.value = currentCount > 32 ? 32 : currentCount;
-    validateSlideRange();
+    maxEl.value = Math.min(currentCount, 32);
   }
+  validateSlideRange(); // always re-validate after adding a slide
 }
 
 function removeSlide(id) {
@@ -1456,6 +1492,19 @@ async function generate() {
     return;
   }
 
+  // ── Pre-flight: verify server is reachable ──────────────────────────────────
+  try {
+    const pingCtrl = new AbortController();
+    const pingTimer = setTimeout(() => pingCtrl.abort(), 4000);
+    let ping;
+    try { ping = await fetch('/api/health', { signal: pingCtrl.signal }); }
+    finally { clearTimeout(pingTimer); }
+    if (!ping.ok) throw new Error('health check failed');
+  } catch {
+    showError('Cannot reach server. Make sure the server is running (npm start) and try again.');
+    return;
+  }
+
   isGenerating = true;
   const genLabel = document.getElementById('gen-label');
   const payload = {
@@ -1487,41 +1536,68 @@ async function generate() {
   }, 900);
 
   try {
+    // ── Phase 1: Outline ──────────────────────────────────────────────────────
     currentAbortController = new AbortController();
-    const res = await fetch('/api/generate', {
+    const res = await fetch('/api/generate/outline', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
       signal: currentAbortController.signal
     });
-    const data = await res.json();
+    const data = await safeJSON(res);
     if (!res.ok || !data.success) throw new Error(data.error || 'Generation failed');
 
     clearInterval(progInterval);
-    bar.style.width = '100%';
-    msgEl.textContent = 'Done.';
-    document.getElementById('status-dot').innerHTML = 'System � Rendered';
-
-    await new Promise(r => setTimeout(r, 300));
+    bar.style.width = '70%';
+    msgEl.textContent = 'Drafting visuals…';
+    document.getElementById('status-dot').textContent = 'System · Building visuals…';
 
     presentationData = data.presentation;
     slides = presentationData.slides || [];
+
+    // Render outline immediately — isGenerating stays true so skeleton shows for pending SVGs
     renderPresentation();
+
+    // ── Phase 2: Visuals ──────────────────────────────────────────────────────
+    const visRes = await fetch('/api/generate/visuals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slides, theme: presentationData.theme }),
+      signal: currentAbortController.signal
+    });
+    const visData = await safeJSON(visRes);
+
+    if (visData.success && visData.svgs) {
+      slides.forEach(s => {
+        if (visData.svgs[s.id]) s.svg = visData.svgs[s.id];
+      });
+      // Always re-render to replace any skeleton placeholders
+      renderSlide(currentIdx);
+    }
+
+    bar.style.width = '100%';
+    msgEl.textContent = 'Done.';
+    await new Promise(r => setTimeout(r, 300));
+
   } catch (err) {
     clearInterval(progInterval);
     if (err.name === 'AbortError') {
       console.log('Generation aborted by user.');
+    } else if (err.message === 'Failed to fetch' || err.name === 'TypeError') {
+      showError('Cannot reach server. Make sure the server is running on the correct port.');
     } else {
       showError(err.message);
     }
   } finally {
     currentAbortController = null;
     isGenerating = false;
+    // Re-render to clear any remaining skeleton placeholders (safe to call multiple times)
+    if (slides.length) renderSlide(currentIdx);
     setLoading(false);
     bar.style.width = '0%';
     btn.disabled = false;
     genLabel.textContent = 'Generate presentation';
-    document.getElementById('status-dot').innerHTML = 'System � Ready';
+    document.getElementById('status-dot').textContent = 'System · Ready';
   }
 }
 
@@ -1556,13 +1632,21 @@ function renderPresentation() {
 function renderThumbs() {
   const accent = presentationData?.theme_config?.accent || '';
   document.getElementById('thumb-rail').innerHTML = slides.map((s, i) => `
-    <div class="slide-thumb ${i === 0 ? 'active' : ''}" id="th-${i}" onclick="goTo(${i})"
+    <div class="slide-thumb ${i === 0 ? 'active' : ''}" id="th-${i}" data-idx="${i}"
          style="${i === 0 && accent ? `border-color:${accent}` : ''}">
       <span class="thumb-idx">${i + 1}</span>
       <span class="thumb-label">${escapeHTML(s.title)}</span>
     </div>
   `).join('');
 }
+
+
+// Thumbnail click — event delegation avoids inline onclick= in innerHTML
+document.getElementById('thumb-rail').addEventListener('click', function(e) {
+  const thumb = e.target.closest('[data-idx]');
+  if (thumb) goTo(parseInt(thumb.dataset.idx, 10));
+});
+
 
 function renderSlide(idx) {
   // Bounds guard
@@ -1662,7 +1746,7 @@ function toggleNotes() {
 let isExporting = false;
 let _errorDismissTimer = null; // track auto-dismiss timer
 async function exportPDF() {
-  if (isExporting || !slides.length) return; // guard: no slides = nothing to export
+  if (isExporting || isGenerating || !slides.length) return; // guard: no slides = nothing to export
   isExporting = true;
   const btn = document.getElementById('export-btn');
   const savedIdx = currentIdx;

@@ -68,31 +68,20 @@ function sanitizeText(str, maxLen = 2000) {
     .slice(0, maxLen);
 }
 
-// ─── SVG validation ───────────────────────────────────────────────────────────
-/**
- * Lightweight check that svg_code is a well-typed SVG string and does not
- * contain script elements or event handler attributes.
- */
-function validateSVG(code) {
-  if (typeof code !== 'string') return null;
-  const trimmed = code.trim();
-  // Must start with <svg and end with </svg> — blocks trailing <script> payloads
-  if (!trimmed.startsWith('<svg') || !trimmed.endsWith('</svg>')) return null;
-  // Reject any embedded scripts or event handler attributes
-  if (/<script[\s>]/i.test(trimmed)) return null;
-  if (/\bon\w+\s*=/i.test(trimmed)) return null;
-  return trimmed;
-}
-
 // ─── System prompt builder ────────────────────────────────────────────────────
 function buildOutlinePrompt(theme, totalSlides) {
-  return `EXPERT PPT ARCHITECT. Output ONLY JSON.
-RULES:
-- Total slides: ${totalSlides}
-- Theme: ${theme}
-- DO NOT generate svg_code in this step. Only structure.
+  return `You are an expert presentation architect. Respond with ONLY a valid JSON object — no markdown, no explanation, no code fences.
 
-Output format:
+Rules:
+- Generate exactly ${totalSlides} slides.
+- Theme: ${theme}
+- For needs_visual=true slides, populate visual_data with real labels and values arrays.
+- visual_type must be one of: bar_chart, line_chart, pie_chart, flow_diagram, tree_diagram, block_diagram, none, auto.
+- layout must be one of: title-only, title-content-visual-right, title-content-visual-bottom, centered-visual, content-only.
+- Keep bullets to 3-4 concise points max.
+- Do NOT include svg_code.
+
+JSON schema:
 {
   "presentation_title": "string",
   "theme": "${theme}",
@@ -100,11 +89,11 @@ Output format:
     {
       "id": 1,
       "title": "string",
-      "subtitle": "string (only for title slide)",
-      "bullets": ["bullet1", "bullet2"],
+      "subtitle": "string or null",
+      "bullets": ["string"],
       "needs_visual": true,
       "visual_type": "bar_chart",
-      "visual_data": { "labels": [], "values": [], "title": "" },
+      "visual_data": { "labels": ["A","B"], "values": [10,20], "title": "Chart Title" },
       "layout": "title-content-visual-right",
       "speaker_notes": "string"
     }
@@ -112,25 +101,7 @@ Output format:
 }`;
 }
 
-function buildVisualsPrompt(themeConfig) {
-  return `SVG EXPERT. Output ONLY JSON.
-Raw SVG in "svg_code". NO OVERLAPS. NO HALLUCINATION.
-MARGINS: min 24px. SPACING: min 16px. Align to grid.
-GRAPHS: Labeled axes. Bars/lines DON'T touch.
-DIAGRAMS: Clear flow. No crossing lines.
-STYLE: Single font, no wrap/gradients/shadows.
-COLORS: bg(${themeConfig.bg}), text(${themeConfig.text}), accent(${themeConfig.accent}), sec(${themeConfig.secondary}).
-GEOMETRY: rect rx="${themeConfig.uiRadius || '4px'}". stroke-width="${themeConfig.uiBorderW || '1px'}".
 
-Input will be a list of slides needing visuals.
-Output format:
-{
-  "svgs": {
-    "1": "<svg>...</svg>",
-    "2": "<svg>...</svg>"
-  }
-}`;
-}
 
 // ─── Fallback local SVG builder (no dummy data) ───────────────────────────────
 function buildSVG(visual_type, visual_data, theme) {
@@ -282,6 +253,26 @@ function buildSVG(visual_type, visual_data, theme) {
   return null;
 }
 
+
+// ─── Robust JSON extraction ──────────────────────────────────────────────────
+/**
+ * Finds the first top-level JSON object in a string by balancing braces.
+ * Far more reliable than greedy regex when the LLM emits trailing prose.
+ */
+function extractJSON(text) {
+  const start = text.indexOf('{');
+  if (start === -1) return null;
+  let depth = 0;
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++;
+    else if (text[i] === '}') {
+      depth--;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
 // ─── Default slide template ───────────────────────────────────────────────────
 const DEFAULT_TEMPLATE = [
   'Title Slide', 'Outline / Index', 'Introduction', 'Problem Statement',
@@ -294,6 +285,21 @@ const DEFAULT_TEMPLATE = [
   'References', 'Q&A / Thank You'
 ];
 
+
+// ─── Legacy route shim + health ──────────────────────────────────────────────
+// If a stale frontend calls the old /api/generate, return a clear error
+// instead of a cryptic Express 404 HTML page.
+app.post('/api/generate', (_req, res) => {
+  res.status(410).json({
+    error: 'This endpoint was retired. Please hard-refresh (Ctrl+Shift+R) to load the latest version.'
+  });
+});
+
+// Health check — lets the frontend verify the server is reachable before generating
+app.get('/api/health', (_req, res) => {
+  res.json({ ok: true, version: 2 });
+});
+
 // ─── Generate endpoint ────────────────────────────────────────────────────────
 app.post('/api/generate/outline', async (req, res) => {
   try {
@@ -305,9 +311,11 @@ app.post('/api/generate/outline', async (req, res) => {
       theme = 'minimalist',
       min_slides = 5,
       max_slides = 12,
-      graphs_enabled = true,
-      diagrams_enabled = true
+      graphs_enabled: raw_graphs = true,
+      diagrams_enabled: raw_diagrams = true
     } = req.body;
+    const graphs_enabled   = raw_graphs   !== false && raw_graphs   !== 'false';
+    const diagrams_enabled = raw_diagrams !== false && raw_diagrams !== 'false';
 
     // ── Input validation ──
     const title = sanitizeText(rawTitle, 200);
@@ -359,23 +367,22 @@ Diagrams: ${diagrams_enabled}`;
         { role: 'user',   content: userPrompt }
       ],
       temperature: 0.7,
-      max_completion_tokens: 4000
+      max_completion_tokens: 8192
     });
 
     let raw = completion.choices[0]?.message?.content?.trim();
     if (!raw) throw new Error('Empty response from LLM.');
 
-    // Strip markdown fences
-    // Handle leading newlines before the fence and trailing fences
+    // Strip markdown fences, XML preamble, and any prose before the JSON
     raw = raw.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
 
     let parsed;
     try {
       parsed = JSON.parse(raw);
     } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) {
-        try { parsed = JSON.parse(match[0]); }
+      const extracted = extractJSON(raw);
+      if (extracted) {
+        try { parsed = JSON.parse(extracted); }
         catch { throw new Error('LLM returned malformed JSON. Please try again.'); }
       } else {
         throw new Error('LLM returned malformed JSON. Please try again.');
@@ -430,7 +437,7 @@ Diagrams: ${diagrams_enabled}`;
         }
       }
 
-      // Remove raw svg_code from response (already consumed)
+      // svg_code is never generated (outline prompt forbids it) — clean defensively
       delete slide.svg_code;
       return slide;
     });
@@ -440,64 +447,33 @@ Diagrams: ${diagrams_enabled}`;
     res.json({ success: true, presentation: parsed });
 
   } catch (err) {
-    console.error('[/api/generate]', err.message);
+    console.error('[/api/generate/outline]', err.message);
     res.status(500).json({ error: err.message || 'Internal server error.' });
   }
 });
 
 
 // ─── Visuals endpoint ────────────────────────────────────────────────────────
+// The LLM cannot reliably embed raw SVG markup inside JSON string values —
+// angle brackets, quotes, and ampersands break JSON.parse every time.
+// Instead: we use the outline visual_data (labels + values) that the LLM already
+// returned to drive the deterministic local SVG builder. No second LLM call needed
+// for charts/diagrams — the data is already there. The endpoint is kept for
+// future extensibility (e.g. image generation, external services).
 app.post('/api/generate/visuals', async (req, res) => {
   try {
     const { slides, theme = 'minimalist' } = req.body;
     if (!Array.isArray(slides)) return res.status(400).json({ error: 'Slides array required.' });
+    if (slides.length > 64) return res.status(400).json({ error: 'Too many slides.' });
 
     const safeTheme = THEMES[theme] ? theme : 'minimalist';
-    const themeConfig = THEMES[safeTheme];
 
-    // Filter slides that need visuals
-    const slidesNeedingVisuals = slides.filter(s => s.needs_visual && s.visual_type !== 'none' && s.visual_type !== 'auto');
-
-    if (slidesNeedingVisuals.length === 0) {
-      return res.json({ success: true, svgs: {} });
-    }
-
-    const userPrompt = JSON.stringify(slidesNeedingVisuals.map(s => ({
-      id: s.id,
-      title: s.title,
-      visual_type: s.visual_type,
-      visual_data: s.visual_data
-    })));
-
-    const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
-    const completion = await groq.chat.completions.create({
-      model,
-      messages: [
-        { role: 'system', content: buildVisualsPrompt(themeConfig) },
-        { role: 'user',   content: userPrompt }
-      ],
-      temperature: 0.3,
-      max_completion_tokens: 4000
-    });
-
-    let raw = completion.choices[0]?.message?.content?.trim();
-    if (!raw) throw new Error('Empty response from LLM.');
-    raw = raw.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}/);
-      if (match) parsed = JSON.parse(match[0]);
-      else throw new Error('Malformed JSON.');
-    }
-
-    // Validate and fallback
+    // Build SVGs locally using deterministic builder — no LLM, no JSON escaping issues
     const svgs = {};
-    for (const s of slidesNeedingVisuals) {
-      const llmSVG = validateSVG(parsed.svgs?.[s.id] || parsed.svgs?.[String(s.id)]);
-      svgs[s.id] = llmSVG || buildSVG(s.visual_type, s.visual_data, safeTheme);
+    for (const s of slides) {
+      if (!s.needs_visual || s.visual_type === 'none' || s.visual_type === 'auto') continue;
+      const built = buildSVG(s.visual_type, s.visual_data, safeTheme);
+      if (built) svgs[s.id] = built;
     }
 
     res.json({ success: true, svgs });
@@ -505,6 +481,12 @@ app.post('/api/generate/visuals', async (req, res) => {
     console.error('[/api/generate/visuals]', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+
+// ─── 404 for unknown /api/* routes — return JSON, not Express HTML ────────────
+app.use('/api', (_req, res) => {
+  res.status(404).json({ error: 'API route not found.' });
 });
 
 // ─── Start server ─────────────────────────────────────────────────────────────
