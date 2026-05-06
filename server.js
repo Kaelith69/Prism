@@ -85,22 +85,12 @@ function validateSVG(code) {
 }
 
 // ─── System prompt builder ────────────────────────────────────────────────────
-function buildSystemPrompt(theme, totalSlides, themeConfig, graphs_enabled, diagrams_enabled) {
-  const needsVisuals = graphs_enabled || diagrams_enabled;
-  const svgPrompt = needsVisuals ? `
-SVG EXPERT. Raw SVG in "svg_code". NO OVERLAPS. NO HALLUCINATION.
-MARGINS: min 24px. SPACING: min 16px. Align to grid.
-GRAPHS: Labeled axes. Bars/lines DON'T touch.
-DIAGRAMS: Clear flow. No crossing lines.
-STYLE: Single font, no wrap/gradients/shadows.
-COLORS: bg(${themeConfig.bg}), text(${themeConfig.text}), accent(${themeConfig.accent}), sec(${themeConfig.secondary}).
-GEOMETRY: rect rx="${themeConfig.uiRadius || '4px'}". stroke-width="${themeConfig.uiBorderW || '1px'}".` : '';
-
+function buildOutlinePrompt(theme, totalSlides) {
   return `EXPERT PPT ARCHITECT. Output ONLY JSON.
 RULES:
 - Total slides: ${totalSlides}
 - Theme: ${theme}
-${svgPrompt}
+- DO NOT generate svg_code in this step. Only structure.
 
 Output format:
 {
@@ -115,11 +105,30 @@ Output format:
       "needs_visual": true,
       "visual_type": "bar_chart",
       "visual_data": { "labels": [], "values": [], "title": "" },
-      ${needsVisuals ? '"svg_code": "<svg>...</svg>",' : ''}
       "layout": "title-content-visual-right",
       "speaker_notes": "string"
     }
   ]
+}`;
+}
+
+function buildVisualsPrompt(themeConfig) {
+  return `SVG EXPERT. Output ONLY JSON.
+Raw SVG in "svg_code". NO OVERLAPS. NO HALLUCINATION.
+MARGINS: min 24px. SPACING: min 16px. Align to grid.
+GRAPHS: Labeled axes. Bars/lines DON'T touch.
+DIAGRAMS: Clear flow. No crossing lines.
+STYLE: Single font, no wrap/gradients/shadows.
+COLORS: bg(${themeConfig.bg}), text(${themeConfig.text}), accent(${themeConfig.accent}), sec(${themeConfig.secondary}).
+GEOMETRY: rect rx="${themeConfig.uiRadius || '4px'}". stroke-width="${themeConfig.uiBorderW || '1px'}".
+
+Input will be a list of slides needing visuals.
+Output format:
+{
+  "svgs": {
+    "1": "<svg>...</svg>",
+    "2": "<svg>...</svg>"
+  }
 }`;
 }
 
@@ -286,7 +295,7 @@ const DEFAULT_TEMPLATE = [
 ];
 
 // ─── Generate endpoint ────────────────────────────────────────────────────────
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate/outline', async (req, res) => {
   try {
     const {
       title: rawTitle,
@@ -346,7 +355,7 @@ Diagrams: ${diagrams_enabled}`;
     const completion = await groq.chat.completions.create({
       model,
       messages: [
-        { role: 'system', content: buildSystemPrompt(safeTheme, slideCount, themeConfig, graphs_enabled, diagrams_enabled) },
+        { role: 'system', content: buildOutlinePrompt(safeTheme, slideCount) },
         { role: 'user',   content: userPrompt }
       ],
       temperature: 0.7,
@@ -417,9 +426,7 @@ Diagrams: ${diagrams_enabled}`;
           slide.needs_visual = false;
           slide.svg = null;
         } else {
-          // Validate LLM SVG before use, fallback to local builder
-          const llmSVG = validateSVG(slide.svg_code);
-          slide.svg = llmSVG || buildSVG(slide.visual_type, slide.visual_data, safeTheme);
+          slide.svg = null; // Will be populated in /api/generate/visuals
         }
       }
 
@@ -435,6 +442,68 @@ Diagrams: ${diagrams_enabled}`;
   } catch (err) {
     console.error('[/api/generate]', err.message);
     res.status(500).json({ error: err.message || 'Internal server error.' });
+  }
+});
+
+
+// ─── Visuals endpoint ────────────────────────────────────────────────────────
+app.post('/api/generate/visuals', async (req, res) => {
+  try {
+    const { slides, theme = 'minimalist' } = req.body;
+    if (!Array.isArray(slides)) return res.status(400).json({ error: 'Slides array required.' });
+
+    const safeTheme = THEMES[theme] ? theme : 'minimalist';
+    const themeConfig = THEMES[safeTheme];
+
+    // Filter slides that need visuals
+    const slidesNeedingVisuals = slides.filter(s => s.needs_visual && s.visual_type !== 'none' && s.visual_type !== 'auto');
+
+    if (slidesNeedingVisuals.length === 0) {
+      return res.json({ success: true, svgs: {} });
+    }
+
+    const userPrompt = JSON.stringify(slidesNeedingVisuals.map(s => ({
+      id: s.id,
+      title: s.title,
+      visual_type: s.visual_type,
+      visual_data: s.visual_data
+    })));
+
+    const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+    const completion = await groq.chat.completions.create({
+      model,
+      messages: [
+        { role: 'system', content: buildVisualsPrompt(themeConfig) },
+        { role: 'user',   content: userPrompt }
+      ],
+      temperature: 0.3,
+      max_completion_tokens: 4000
+    });
+
+    let raw = completion.choices[0]?.message?.content?.trim();
+    if (!raw) throw new Error('Empty response from LLM.');
+    raw = raw.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      const match = raw.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+      else throw new Error('Malformed JSON.');
+    }
+
+    // Validate and fallback
+    const svgs = {};
+    for (const s of slidesNeedingVisuals) {
+      const llmSVG = validateSVG(parsed.svgs?.[s.id] || parsed.svgs?.[String(s.id)]);
+      svgs[s.id] = llmSVG || buildSVG(s.visual_type, s.visual_data, safeTheme);
+    }
+
+    res.json({ success: true, svgs });
+  } catch (err) {
+    console.error('[/api/generate/visuals]', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

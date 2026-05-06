@@ -832,6 +832,23 @@ footer {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
 
+/* Skeleton Loader for SVG Panel */
+.skeleton {
+  background: var(--surface-2);
+  border: 1px dashed var(--border-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+  min-height: 200px;
+}
+.skel-anim {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.05), transparent);
+  animation: skelMove 1.5s infinite;
+}
+@keyframes skelMove {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
 </style>
 </head>
 <body>
@@ -1597,9 +1614,15 @@ function buildSlideHTML(slide, idx) {
     `<li class="slide-bullet" style="animation-delay:${bi * 60}ms"><span>${escapeHTML(b)}</span></li>`
   ).join('');
 
-  const hasVis = slide.needs_visual && slide.svg;
+  const expectsVis = slide.needs_visual && slide.visual_type !== 'none' && slide.visual_type !== 'auto';
+  const hasVis = expectsVis && slide.svg;
   // Sanitize SVG via DOMParser before injecting into innerHTML (prevents XSS)
-  const visualHTML = hasVis ? `<div class="visual-panel">${sanitizeSVG(slide.svg)}</div>` : '';
+  let visualHTML = '';
+  if (hasVis) {
+    visualHTML = `<div class="visual-panel">${sanitizeSVG(slide.svg)}</div>`;
+  } else if (expectsVis && isGenerating) {
+    visualHTML = `<div class="visual-panel skeleton"><div class="skel-anim"></div><div style="font-size:10px; opacity:0.4; margin-top:8px">Generating ${slide.visual_type}...</div></div>`;
+  }
 
   // Map all LLM-defined layouts to grid CSS classes
   let gridClass = 'slide-grid';
