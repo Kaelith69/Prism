@@ -13,9 +13,10 @@ const path    = require('path');
 const app = express();
 
 // CORS: restrict to same origin in production, allow localhost in dev
+const _port = process.env.PORT || 3001;
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(',')
-  : ['http://localhost:3001', 'http://127.0.0.1:3001'];
+  : [`http://localhost:${_port}`, `http://127.0.0.1:${_port}`];
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -74,8 +75,9 @@ function sanitizeText(str, maxLen = 2000) {
 function validateSVG(code) {
   if (typeof code !== 'string') return null;
   const trimmed = code.trim();
-  if (!trimmed.startsWith('<svg') || !trimmed.includes('</svg>')) return null;
-  // Reject any embedded scripts or event attributes
+  // Must start with <svg and end with </svg> — blocks trailing <script> payloads
+  if (!trimmed.startsWith('<svg') || !trimmed.endsWith('</svg>')) return null;
+  // Reject any embedded scripts or event handler attributes
   if (/<script[\s>]/i.test(trimmed)) return null;
   if (/\bon\w+\s*=/i.test(trimmed)) return null;
   return trimmed;
@@ -164,21 +166,25 @@ function buildSVG(visual_type, visual_data, theme) {
 
   if (visual_type === 'line_chart') {
     const maxVal = Math.max(...values, 1);
-    const span   = values.length - 1 || 1;
-    const pts    = values.map((v, i) => `${30 + i * (300 / span)},${180 - (v / maxVal) * 140}`).join(' ');
+    const n      = values.length;
+    const span   = (n - 1) || 1;
+    const xOf    = i => 30 + i * (300 / span);
+    const yOf    = v => 180 - (v / maxVal) * 140;
+    const pts    = values.map((v, i) => `${xOf(i)},${yOf(v)}`).join(' ');
+    // Polygon close point uses the actual last x — not hardcoded 330
+    const lastX  = xOf(n - 1);
     const dots   = values.map((v, i) => {
-      const x = 30 + i * (300 / span);
-      const y = 180 - (v / maxVal) * 140;
+      const x = xOf(i), y = yOf(v);
       return `<circle cx="${x}" cy="${y}" r="4" fill="${accent}"/><text x="${x}" y="${y - 8}" text-anchor="middle" fill="${accent}" font-size="9" font-family="sans-serif">${v}</text>`;
     }).join('');
-    const axisLabels = labels.map((label, i) => {
-      const x = 30 + i * (300 / (labels.length - 1 || 1));
-      return `<text x="${x}" y="198" text-anchor="middle" fill="${text}" font-size="9" font-family="sans-serif">${label}</text>`;
-    }).join('');
+    const axisSpan = (labels.length - 1) || 1;
+    const axisLabels = labels.map((label, i) =>
+      `<text x="${30 + i * (300 / axisSpan)}" y="198" text-anchor="middle" fill="${text}" font-size="9" font-family="sans-serif">${label}</text>`
+    ).join('');
     return `<svg viewBox="0 0 380 220" xmlns="http://www.w3.org/2000/svg">
       <text x="190" y="18" text-anchor="middle" fill="${text}" font-size="11" font-weight="bold" font-family="sans-serif">${title}</text>
       <polyline points="${pts}" fill="none" stroke="${accent}" stroke-width="2.5" stroke-linejoin="round"/>
-      <polygon points="30,185 ${pts} 330,185" fill="${accent}" opacity="0.1"/>
+      <polygon points="30,185 ${pts} ${lastX},185" fill="${accent}" opacity="0.1"/>
       ${dots}${axisLabels}
       <line x1="25" y1="185" x2="360" y2="185" stroke="${text}" stroke-width="1" opacity="0.3"/>
     </svg>`;
@@ -187,17 +193,19 @@ function buildSVG(visual_type, visual_data, theme) {
   if (visual_type === 'pie_chart') {
     const total  = values.reduce((a, b) => a + b, 0) || 1;
     const colors = [accent, secondary, '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
-    let angle    = -Math.PI / 2;
-    const slices = values.map((v, i) => {
+    // Use reduce to accumulate angle without side-effectful map
+    const { slices } = values.reduce((acc, v, i) => {
       const slice = (v / total) * 2 * Math.PI;
-      const x1 = 110 + 85 * Math.cos(angle);
-      const y1 = 110 + 85 * Math.sin(angle);
-      angle += slice;
-      const x2    = 110 + 85 * Math.cos(angle);
-      const y2    = 110 + 85 * Math.sin(angle);
+      const x1 = 110 + 85 * Math.cos(acc.angle);
+      const y1 = 110 + 85 * Math.sin(acc.angle);
+      const nextAngle = acc.angle + slice;
+      const x2    = 110 + 85 * Math.cos(nextAngle);
+      const y2    = 110 + 85 * Math.sin(nextAngle);
       const large = slice > Math.PI ? 1 : 0;
-      return `<path d="M110,110 L${x1},${y1} A85,85 0 ${large},1 ${x2},${y2} Z" fill="${colors[i % colors.length]}" opacity="0.85"/>`;
-    }).join('');
+      acc.slices += `<path d="M110,110 L${x1},${y1} A85,85 0 ${large},1 ${x2},${y2} Z" fill="${colors[i % colors.length]}" opacity="0.85"/>`;
+      acc.angle = nextAngle;
+      return acc;
+    }, { slices: '', angle: -Math.PI / 2 });
     const legend = labels.map((l, i) => `
       <rect x="215" y="${30 + i * 22}" width="12" height="12" fill="${colors[i % colors.length]}" rx="2"/>
       <text x="232" y="${41 + i * 22}" fill="${text}" font-size="10" font-family="sans-serif">${l} (${Math.round(values[i] / total * 100)}%)</text>
@@ -210,10 +218,12 @@ function buildSVG(visual_type, visual_data, theme) {
 
   if (visual_type === 'flow_diagram') {
     const steps = labels.slice(0, 5);
+    const BOX_W = 68, GAP = 10;
     const boxes = steps.map((s, i) => {
-      const x     = 30 + i * 66;
+      const x     = 30 + i * (BOX_W + GAP);
+      // Arrow runs from end of current box to start of next box
       const arrow = i < steps.length - 1
-        ? `<line x1="${x + 74}" y1="100" x2="${x + 80}" y2="100" stroke="${accent}" stroke-width="2" marker-end="url(#arrow)"/>`
+        ? `<line x1="${x + BOX_W}" y1="100" x2="${x + BOX_W + GAP - 2}" y2="100" stroke="${accent}" stroke-width="2" marker-end="url(#arrow)"/>`
         : '';
       return `
         <rect x="${x}" y="80" width="68" height="40" rx="8" fill="${accent}" opacity="0.15" stroke="${accent}" stroke-width="1.5"/>
@@ -308,8 +318,8 @@ app.post('/api/generate', async (req, res) => {
     const themeConfig = THEMES[safeTheme];
 
     // ── Slide count: clamp strictly within [min, max] ──
-    const rawMin = Math.max(3, parseInt(min_slides) || 5);
-    const rawMax = Math.min(32, parseInt(max_slides) || 12);
+    const rawMin = Math.max(3, parseInt(min_slides, 10) || 5);
+    const rawMax = Math.min(32, parseInt(max_slides, 10) || 12);
     // Guard: if user set min > max, swap them gracefully
     const minS = Math.min(rawMin, rawMax);
     const maxS = Math.max(rawMin, rawMax);
@@ -317,8 +327,18 @@ app.post('/api/generate', async (req, res) => {
     const slideCount = Math.min(Math.max(userCount || minS, minS), maxS);
 
     // ── Prompt ──
+    // Valid visual type values accepted by the server
+    const VALID_VIS = new Set(['auto','bar_chart','line_chart','pie_chart','flow_diagram','tree_diagram','block_diagram','none']);
+
     const slideTopics = Array.isArray(inputSlides) && inputSlides.length
-      ? `Slide topics: ${inputSlides.map(s => sanitizeText(s.title, 100)).join(', ')}`
+      ? `Slide topics (respect the visual preference hint on each slide):\n${inputSlides.map((s, i) => {
+          const t       = sanitizeText(s.title, 100) || `Slide ${i + 1}`;
+          const wantsVis = s.needs_visual !== false;
+          const vt       = VALID_VIS.has(s.visual_type) ? s.visual_type : 'auto';
+          const hint     = !wantsVis          ? ' [no visual]'
+                         : (vt !== 'auto' && vt !== 'none') ? ` [prefer visual: ${vt}]` : '';
+          return `  ${i + 1}. ${t}${hint}`;
+        }).join('\n')}`
       : `Select and adapt the most appropriate topics from this standard structure to fit the ${slideCount}-slide constraint:\n- ${DEFAULT_TEMPLATE.join('\n- ')}`;
 
     const userPrompt = `Create a presentation titled: "${title}"
@@ -329,8 +349,9 @@ ${slideTopics}
 Graphs enabled: ${graphs_enabled}
 Diagrams enabled: ${diagrams_enabled}`;
 
+    const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
     const completion = await groq.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
+      model,
       messages: [
         { role: 'system', content: buildSystemPrompt(safeTheme, slideCount, themeConfig, graphs_enabled, diagrams_enabled) },
         { role: 'user',   content: userPrompt }
@@ -343,7 +364,8 @@ Diagrams enabled: ${diagrams_enabled}`;
     if (!raw) throw new Error('Empty response from LLM.');
 
     // Strip markdown fences
-    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    // Handle leading newlines before the fence and trailing fences
+    raw = raw.replace(/^\s*```(?:json)?\s*/i, '').replace(/\s*```\s*$/i, '').trim();
 
     let parsed;
     try {
@@ -362,11 +384,30 @@ Diagrams enabled: ${diagrams_enabled}`;
       throw new Error('LLM returned an empty slide list. Please try again.');
     }
 
+    // Build a title→needs_visual lookup from user-supplied slides so we can
+    // enforce the user's explicit "no visual" choices even if the LLM ignores the hint.
+    const userVisMap = new Map();
+    if (Array.isArray(inputSlides)) {
+      inputSlides.forEach((s, i) => {
+        const key = sanitizeText(s.title, 100) || `Slide ${i + 1}`;
+        if (s.needs_visual === false) userVisMap.set(key.toLowerCase(), false);
+      });
+    }
+
     // ── Post-process slides ──
     parsed.slides = parsed.slides.map(slide => {
       // Enforce max 4 bullets server-side
       if (Array.isArray(slide.bullets)) {
         slide.bullets = slide.bullets.slice(0, 4);
+      }
+
+      // Enforce user's explicit "no visual" preference for this slide title
+      const titleKey = (typeof slide.title === 'string' ? slide.title : '').toLowerCase();
+      if (userVisMap.get(titleKey) === false) {
+        slide.needs_visual = false;
+        slide.svg = null;
+        delete slide.svg_code;
+        return slide;
       }
 
       if (slide.needs_visual && slide.visual_type !== 'none') {
@@ -392,6 +433,7 @@ Diagrams enabled: ${diagrams_enabled}`;
     });
 
     parsed.theme_config = themeConfig;
+    parsed.author        = author; // echo back so client can render it reliably
     res.json({ success: true, presentation: parsed });
 
   } catch (err) {
@@ -401,5 +443,5 @@ Diagrams enabled: ${diagrams_enabled}`;
 });
 
 // ─── Start server ─────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3001;
+const PORT = _port;
 app.listen(PORT, () => console.log(`🚀 PPT Gen server running on port ${PORT}`));

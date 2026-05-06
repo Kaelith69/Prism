@@ -600,7 +600,6 @@ select option { background: #fff; color: var(--ink); }
 .slide-frame {
   border: 1px solid var(--border);
   border-radius: var(--r3);
-  background: #fff;
   width: 100%;
   aspect-ratio: 16 / 9;
   padding: var(--s8) var(--s7);
@@ -608,6 +607,15 @@ select option { background: #fff; color: var(--ink); }
               transform var(--t-med) var(--ease-out);
   position: relative;
   overflow: hidden;
+  /* ── Theme vars: overridden per-generation by applyTheme() ── */
+  --th-bg:        #ffffff;
+  --th-text:      #111111;
+  --th-accent:    #2563EB;
+  --th-secondary: #64748B;
+  --th-font:      'Libre Baskerville', Georgia, serif;
+  background:  var(--th-bg);
+  color:       var(--th-text);
+  font-family: var(--th-font);
 }
 .slide-frame.transitioning {
   opacity: 0;
@@ -621,39 +629,47 @@ select option { background: #fff; color: var(--ink); }
 }
 .slide-kicker {
   font-size: var(--text-xs);
-  color: var(--ink-4);
+  color: var(--th-secondary);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   margin-bottom: var(--s4);
   font-family: 'IBM Plex Mono', monospace;
 }
 .slide-h1 {
-  font-family: 'Libre Baskerville', serif;
+  font-family: var(--th-font);
   font-size: clamp(1.8rem, 4vw, 3rem);
   font-weight: 700;
   line-height: 1.1;
   letter-spacing: -0.025em;
-  color: var(--ink);
+  color: var(--th-text);
   margin-bottom: var(--s4);
 }
 .slide-subtitle {
   font-size: var(--text-sm);
-  color: var(--ink-3);
+  color: var(--th-secondary);
   line-height: 1.6;
   max-width: 380px;
 }
+.slide-author {
+  font-size: var(--text-xs);
+  color: var(--th-secondary);
+  letter-spacing: 0.06em;
+  margin-top: var(--s4);
+  font-family: 'IBM Plex Mono', monospace;
+  opacity: 0.75;
+}
 .slide-rule {
   width: 32px; height: 2px;
-  background: var(--primary);
+  background: var(--th-accent);
   margin-bottom: var(--s5);
 }
 
 /* Content slide */
 .slide-content-title {
-  font-family: 'Libre Baskerville', serif;
+  font-family: var(--th-font);
   font-size: var(--text-xl);
   font-weight: 700;
-  color: var(--ink);
+  color: var(--th-text);
   letter-spacing: -0.015em;
   line-height: 1.2;
   margin-bottom: var(--s5);
@@ -665,23 +681,25 @@ select option { background: #fff; color: var(--ink); }
 .slide-bullets { list-style: none; display: flex; flex-direction: column; gap: var(--s4); }
 .slide-bullet {
   display: grid; grid-template-columns: 16px 1fr; gap: var(--s3);
-  font-size: var(--text-sm); line-height: 1.65; color: var(--ink-2);
+  font-size: var(--text-sm); line-height: 1.65; color: var(--th-text);
   animation: bulletIn 0.25s var(--ease-out) both;
+  opacity: 0.88;
 }
 .slide-bullet::before {
   content: '—';
-  color: var(--ink-4);
+  color: var(--th-accent);
   font-size: var(--text-xs);
   margin-top: 0.35em;
 }
 
 .visual-panel {
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: transparent;
+  border: 1px solid var(--th-accent);
   border-radius: var(--r2);
   padding: var(--s4);
   display: flex; align-items: center; justify-content: center;
   min-height: 180px;
+  opacity: 0.92;
 }
 .visual-panel svg { max-width: 100%; height: auto; }
 
@@ -917,7 +935,7 @@ footer {
       <div class="action-row">
         <button class="btn-generate" id="generate-btn" onclick="generate()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-          Generate presentation
+          <span id="gen-label">Generate presentation</span>
         </button>
 
         <div class="loader" id="loader">
@@ -990,7 +1008,7 @@ let slideIdCounter = 0;
 let isGenerating = false; // in-flight guard
 
 /* ──────────────────────────────
-   Security: HTML escape helper
+   Security helpers
 ────────────────────────────── */
 function escapeHTML(str) {
   if (typeof str !== 'string') return '';
@@ -1000,6 +1018,69 @@ function escapeHTML(str) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+/**
+ * Sanitize an SVG string via DOMParser round-trip.
+ * Strips <script> elements and on* event attributes before innerHTML injection.
+ */
+function sanitizeSVG(raw) {
+  if (typeof raw !== 'string') return '';
+  try {
+    const doc = new DOMParser().parseFromString(raw, 'image/svg+xml');
+    if (doc.querySelector('parsererror')) return '';
+    const svg = doc.documentElement;
+    svg.querySelectorAll('script').forEach(el => el.remove());
+    svg.querySelectorAll('*').forEach(el => {
+      Array.from(el.attributes).forEach(attr => {
+        if (/^on/i.test(attr.name)) el.removeAttribute(attr.name);
+      });
+    });
+    return new XMLSerializer().serializeToString(svg);
+  } catch { return ''; }
+}
+
+/* ──────────────────────────────
+   Theme application
+────────────────────────────── */
+const _loadedFonts = new Set(['Libre Baskerville', 'IBM Plex Mono']);
+
+function loadFont(fontName) {
+  if (!fontName || _loadedFonts.has(fontName)) return;
+  _loadedFonts.add(fontName);
+  const link  = document.createElement('link');
+  link.rel    = 'stylesheet';
+  // Google Fonts needs spaces replaced with '+'
+  link.href   = `https://fonts.googleapis.com/css2?family=${fontName.replace(/\s+/g, '+')}:wght@400;700&display=swap`;
+  document.head.appendChild(link);
+}
+
+function applyTheme(tc) {
+  if (!tc) return;
+  loadFont(tc.font); // ensure font is available before the frame paints
+  const frame = document.getElementById('slide-frame');
+  // Set CSS custom properties that cascade down to all slide child elements
+  frame.style.setProperty('--th-bg',        tc.bg        || '#ffffff');
+  frame.style.setProperty('--th-text',      tc.text      || '#111111');
+  frame.style.setProperty('--th-accent',    tc.accent    || '#2563EB');
+  frame.style.setProperty('--th-secondary', tc.secondary || '#64748B');
+  frame.style.setProperty('--th-font',      `'${tc.font || 'Libre Baskerville'}', Georgia, serif`);
+  // Also set directly so the frame element itself (background, color) updates
+  frame.style.background  = tc.bg   || '#ffffff';
+  frame.style.color       = tc.text || '#111111';
+  frame.style.fontFamily  = `'${tc.font || 'Libre Baskerville'}', Georgia, serif`;
+}
+
+function resetTheme() {
+  const frame = document.getElementById('slide-frame');
+  frame.style.removeProperty('--th-bg');
+  frame.style.removeProperty('--th-text');
+  frame.style.removeProperty('--th-accent');
+  frame.style.removeProperty('--th-secondary');
+  frame.style.removeProperty('--th-font');
+  frame.style.background = '';
+  frame.style.color      = '';
+  frame.style.fontFamily = '';
 }
 
 /* ──────────────────────────────
@@ -1090,8 +1171,8 @@ function getSlideItems() {
 function validateSlideRange() {
   const minEl = document.getElementById('min-slides');
   const maxEl = document.getElementById('max-slides');
-  const min = parseInt(minEl.value) || 3;
-  const max = parseInt(maxEl.value) || 32;
+  const min = parseInt(minEl.value, 10) || 3;
+  const max = parseInt(maxEl.value, 10) || 32;
   if (min > max) {
     minEl.style.borderColor = 'var(--signal)';
     maxEl.style.borderColor = 'var(--signal)';
@@ -1119,14 +1200,15 @@ async function generate() {
   if (!title) { showError('A title is required to generate slides.'); return; }
 
   // Read slide range once — prevents stale read in payload vs validation
-  const minV = parseInt(document.getElementById('min-slides').value) || 5;
-  const maxV = parseInt(document.getElementById('max-slides').value) || 10;
+  const minV = parseInt(document.getElementById('min-slides').value, 10) || 5;
+  const maxV = parseInt(document.getElementById('max-slides').value, 10) || 10;
   if (minV > maxV) {
     showError('Min slides cannot be greater than max slides.');
     return;
   }
 
   isGenerating = true;
+  const genLabel = document.getElementById('gen-label');
   const payload = {
     title,
     author:           document.getElementById('ppt-author').value.trim(),
@@ -1142,7 +1224,7 @@ async function generate() {
   clearError();
   setLoading(true);
   btn.disabled = true;
-  btn.textContent = 'Generating…';
+  genLabel.textContent = 'Generating…';
 
   // Animate progress bar
   let msgIdx = 0;
@@ -1181,7 +1263,7 @@ async function generate() {
     setLoading(false);
     bar.style.width = '0%';
     btn.disabled = false;
-    btn.textContent = 'Generate presentation';
+    genLabel.textContent = 'Generate presentation';
   }
 }
 
@@ -1189,19 +1271,23 @@ async function generate() {
    Render
 ────────────────────────────── */
 function renderPresentation() {
-  currentIdx = 0;
-  notesVisible = false; // reset notes state for new presentation
+  currentIdx   = 0;
+  notesVisible = false;
   document.getElementById('notes-drawer').classList.remove('on');
   document.getElementById('notes-tog').textContent = 'notes';
 
   document.getElementById('v-title').textContent = presentationData.presentation_title || 'Untitled';
+  // Show author in meta if present
+  const authorStr = presentationData.author ? ` · ${presentationData.author}` : '';
   document.getElementById('v-meta').textContent =
-    `${slides.length} slides · ${presentationData.theme || 'minimalist'} theme`;
+    `${slides.length} slides · ${presentationData.theme || 'minimalist'} theme${authorStr}`;
+
+  // Apply the selected theme to the slide frame (colors + font)
+  applyTheme(presentationData.theme_config);
 
   renderThumbs();
   renderSlide(0);
 
-  // Make nav controls visible now that a presentation exists
   document.getElementById('slide-nav').classList.add('ready');
 
   const vs = document.getElementById('viewer-section');
@@ -1210,8 +1296,10 @@ function renderPresentation() {
 }
 
 function renderThumbs() {
+  const accent = presentationData?.theme_config?.accent || '';
   document.getElementById('thumb-rail').innerHTML = slides.map((s, i) => `
-    <div class="slide-thumb ${i === 0 ? 'active' : ''}" id="th-${i}" onclick="goTo(${i})">
+    <div class="slide-thumb ${i === 0 ? 'active' : ''}" id="th-${i}" onclick="goTo(${i})"
+         style="${i === 0 && accent ? `border-color:${accent}` : ''}">
       <span class="thumb-idx">${i + 1}</span>
       <span class="thumb-label">${escapeHTML(s.title)}</span>
     </div>
@@ -1224,10 +1312,14 @@ function renderSlide(idx) {
   currentIdx = idx;
   const slide = slides[idx];
 
-  // Sync active thumbnail and scroll it into view
+  // Sync active thumbnail with theme accent and scroll into view
+  const accent = presentationData?.theme_config?.accent || '';
   document.querySelectorAll('.slide-thumb').forEach((t, i) => {
-    t.classList.toggle('active', i === idx);
-    if (i === idx) t.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    const isActive = i === idx;
+    t.classList.toggle('active', isActive);
+    // Apply theme accent to active thumb border; clear it when inactive
+    t.style.borderColor = isActive && accent ? accent : '';
+    if (isActive) t.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
   });
 
   const frame = document.getElementById('slide-frame');
@@ -1247,6 +1339,7 @@ function renderSlide(idx) {
 
 function buildSlideHTML(slide, idx) {
   const isTitleSlide = idx === 0 || slide.layout === 'title-only';
+  const author = presentationData?.author || '';
 
   if (isTitleSlide) {
     return `
@@ -1255,6 +1348,7 @@ function buildSlideHTML(slide, idx) {
         <div class="slide-rule"></div>
         <div class="slide-h1">${escapeHTML(slide.title)}</div>
         ${slide.subtitle ? `<div class="slide-subtitle">${escapeHTML(slide.subtitle)}</div>` : ''}
+        ${author       ? `<div class="slide-author">${escapeHTML(author)}</div>` : ''}
       </div>`;
   }
 
@@ -1263,13 +1357,15 @@ function buildSlideHTML(slide, idx) {
   ).join('');
 
   const hasVis = slide.needs_visual && slide.svg;
-  const visualHTML = hasVis ? `<div class="visual-panel">${slide.svg}</div>` : '';
+  // Sanitize SVG via DOMParser before injecting into innerHTML (prevents XSS)
+  const visualHTML = hasVis ? `<div class="visual-panel">${sanitizeSVG(slide.svg)}</div>` : '';
 
-  // Support right-side AND bottom layouts for visuals
+  // Map all LLM-defined layouts to grid CSS classes
   let gridClass = 'slide-grid';
   if (hasVis) {
     if (slide.layout === 'title-content-visual-right') gridClass = 'slide-grid with-visual';
     else if (slide.layout === 'title-content-visual-bottom') gridClass = 'slide-grid with-visual-bottom';
+    else if (slide.layout === 'centered-visual')            gridClass = 'slide-grid with-visual-bottom';
   }
 
   return `
@@ -1315,12 +1411,13 @@ async function exportPDF() {
     for (let i = 0; i < slides.length; i++) {
       if (i > 0) pdf.addPage();
       renderSlide(i);
-      // Wait for the 120ms CSS transition + buffer before capture
-      await new Promise(r => setTimeout(r, 500));
+      // Wait for the 120ms CSS transition + buffer before capture (220ms is sufficient)
+      await new Promise(r => setTimeout(r, 220));
       const el = document.getElementById('slide-frame');
+      const tc = presentationData?.theme_config;
       const canvas = await html2canvas(el, {
         scale: 2, useCORS: true,
-        backgroundColor: '#ffffff',
+        backgroundColor: tc?.bg || '#ffffff',
         logging: false
       });
       pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, W, H);
@@ -1360,15 +1457,15 @@ function clearError() {
 }
 function resetView() {
   window.scrollTo({ top: 0, behavior: 'smooth' });
-  // Reset all presentation state so next generation starts fresh
-  slides = [];
+  slides          = [];
   presentationData = null;
-  currentIdx = 0;
-  notesVisible = false;
+  currentIdx      = 0;
+  notesVisible    = false;
   document.getElementById('notes-drawer').classList.remove('on');
   document.getElementById('notes-tog').textContent = 'notes';
   document.getElementById('slide-nav').classList.remove('ready');
   document.getElementById('slide-count').textContent = '';
+  resetTheme(); // clear theme styles from the frame
   setTimeout(() => {
     document.getElementById('viewer-section').classList.remove('on');
   }, 500);
