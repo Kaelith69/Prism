@@ -70,35 +70,16 @@ function sanitizeText(str, maxLen = 2000) {
 
 // ─── System prompt builder ────────────────────────────────────────────────────
 function buildOutlinePrompt(theme, totalSlides) {
-  return `You are an expert presentation architect. Respond with ONLY a valid JSON object — no markdown, no explanation, no code fences.
+  return `Output ONLY a valid JSON object. No markdown, no prose, no code fences.
 
-Rules:
-- Generate exactly ${totalSlides} slides.
-- Theme: ${theme}
-- For needs_visual=true slides, populate visual_data with real labels and values arrays.
-- visual_type must be one of: bar_chart, line_chart, pie_chart, flow_diagram, tree_diagram, block_diagram, none, auto.
-- layout must be one of: title-only, title-content-visual-right, title-content-visual-bottom, centered-visual, content-only.
-- Keep bullets to 3-4 concise points max.
-- Do NOT include svg_code.
+Generate exactly ${totalSlides} slides. Theme: ${theme}.
+Bullets: 3 max, each under 10 words. Speaker notes: 1 sentence max.
+For needs_visual=true slides, set visual_data with real labels+values.
+visual_type: bar_chart|line_chart|pie_chart|flow_diagram|tree_diagram|block_diagram|none|auto
+layout: title-only|title-content-visual-right|title-content-visual-bottom|centered-visual|content-only
+No svg_code.
 
-JSON schema:
-{
-  "presentation_title": "string",
-  "theme": "${theme}",
-  "slides": [
-    {
-      "id": 1,
-      "title": "string",
-      "subtitle": "string or null",
-      "bullets": ["string"],
-      "needs_visual": true,
-      "visual_type": "bar_chart",
-      "visual_data": { "labels": ["A","B"], "values": [10,20], "title": "Chart Title" },
-      "layout": "title-content-visual-right",
-      "speaker_notes": "string"
-    }
-  ]
-}`;
+{"presentation_title":"str","theme":"${theme}","slides":[{"id":1,"title":"str","subtitle":"str|null","bullets":["str"],"needs_visual":true,"visual_type":"bar_chart","visual_data":{"labels":["A","B"],"values":[10,20],"title":"str"},"layout":"title-content-visual-right","speaker_notes":"str"}]}`;
 }
 
 
@@ -275,14 +256,9 @@ function extractJSON(text) {
 
 // ─── Default slide template ───────────────────────────────────────────────────
 const DEFAULT_TEMPLATE = [
-  'Title Slide', 'Outline / Index', 'Introduction', 'Problem Statement',
-  'Objectives', 'Existing System / Background', 'Limitations of Existing System',
-  'Proposed Solution', 'Key Features', 'System Overview', 'Use Case Diagram',
-  'System Architecture', 'Data Flow Diagram', 'Methodology / Working',
-  'Modules / Components', 'Implementation', 'Results / Output',
-  'Performance / Analysis', 'Applications / Use Cases', 'Advantages',
-  'Limitations', 'Future Scope', 'Tech Stack / Requirements', 'Conclusion',
-  'References', 'Q&A / Thank You'
+  'Title Slide', 'Introduction', 'Problem Statement', 'Proposed Solution',
+  'Key Features', 'System Architecture', 'Methodology', 'Results',
+  'Advantages', 'Limitations', 'Future Scope', 'Conclusion'
 ];
 
 
@@ -367,7 +343,7 @@ Diagrams: ${diagrams_enabled}`;
         { role: 'user',   content: userPrompt }
       ],
       temperature: 0.7,
-      max_completion_tokens: 8192
+      max_completion_tokens: 4000
     });
 
     let raw = completion.choices[0]?.message?.content?.trim();
