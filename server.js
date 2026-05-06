@@ -40,17 +40,30 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ─── Themes ──────────────────────────────────────────────────────────────────
 const THEMES = {
-  minimalist:       { font: 'Playfair Display',  bg: '#FAFAFA',  text: '#111111', accent: '#2563EB', secondary: '#64748B', card: 'rgba(255,255,255,0.7)',   glass: 'rgba(255,255,255,0.5)' },
-  professional:     { font: 'Merriweather',       bg: '#F8F9FA',  text: '#1A1A2E', accent: '#0F3460', secondary: '#533483', card: 'rgba(248,249,250,0.8)',   glass: 'rgba(240,244,248,0.6)' },
-  dark:             { font: 'Syne',               bg: '#0B0B0F',  text: '#E2E8F0', accent: '#6366F1', secondary: '#8B5CF6', card: 'rgba(30,30,50,0.7)',      glass: 'rgba(20,20,40,0.5)' },
-  scientific:       { font: 'Source Serif 4',     bg: '#F0F4FF',  text: '#1E293B', accent: '#1D4ED8', secondary: '#0891B2', card: 'rgba(224,232,255,0.7)',   glass: 'rgba(210,220,255,0.5)' },
-  cyberpunk:        { font: 'Orbitron',           bg: '#0F172A',  text: '#F0FDFA', accent: '#00FFFF', secondary: '#FF00FF', card: 'rgba(0,255,255,0.08)',    glass: 'rgba(0,20,40,0.7)' },
-  brutalist:        { font: 'Space Mono',         bg: '#FFFFF0',  text: '#000000', accent: '#FF3300', secondary: '#000000', card: 'rgba(255,255,240,0.9)',   glass: 'rgba(255,255,220,0.8)' },
-  colorful:         { font: 'Nunito',             bg: '#FFF7F0',  text: '#1A0A2E', accent: '#F97316', secondary: '#8B5CF6', card: 'rgba(255,247,240,0.8)',   glass: 'rgba(255,230,210,0.5)' },
-  classic:          { font: 'EB Garamond',        bg: '#FFFEF7',  text: '#2C1810', accent: '#8B4513', secondary: '#6B3A2A', card: 'rgba(255,254,247,0.85)',  glass: 'rgba(240,235,220,0.6)' },
-  'neo-brutalist':  { font: 'DM Mono',            bg: '#F5F0E8',  text: '#1A1A1A', accent: '#FFD700', secondary: '#FF4444', card: 'rgba(245,240,232,0.9)',   glass: 'rgba(230,225,210,0.7)' },
-  kids:             { font: 'Fredoka One',        bg: '#FFF0F5',  text: '#2D0A3B', accent: '#FF6B9D', secondary: '#4ECDC4', card: 'rgba(255,240,245,0.85)',  glass: 'rgba(255,220,235,0.6)' },
-  'colorblind-safe':{ font: 'Outfit',             bg: '#F8F8F8',  text: '#1A1A1A', accent: '#0077BB', secondary: '#EE7733', card: 'rgba(248,248,248,0.8)',   glass: 'rgba(235,240,248,0.6)' }
+  // Swiss/Bauhaus � airy white, single muted-blue accent, DM Sans
+  minimalist:       { font: 'DM Sans',        bg: '#FEFEFE', text: '#1A1A1A', accent: '#3B7DD8', secondary: '#93B4DC', card: 'rgba(255,255,255,0.92)',  glass: 'rgba(240,246,255,0.55)' },
+  // Corporate authority � deep navy canvas, cool steel, precise
+  professional:     { font: 'Merriweather',   bg: '#0F1E3A', text: '#E8EDF8', accent: '#4D9FFF', secondary: '#8BBEFF', card: 'rgba(15,30,58,0.88)',     glass: 'rgba(30,55,100,0.55)'  },
+  // Moody editorial � near-black, violet glow, magenta spark
+  dark:             { font: 'Syne',           bg: '#07090F', text: '#EDE8F8', accent: '#A78BFA', secondary: '#F472B6', card: 'rgba(18,14,35,0.82)',     glass: 'rgba(12,10,28,0.65)'   },
+  // Blueprint academic � cool linen, ink-blue type, data-precise
+  scientific:       { font: 'Source Serif 4', bg: '#F4F7FF', text: '#0D1E3C', accent: '#1A56DB', secondary: '#0891B2', card: 'rgba(228,237,255,0.80)',  glass: 'rgba(210,226,255,0.52)' },
+  // Neon-noir underground � pitch black, electric teal + hot pink
+  cyberpunk:        { font: 'Orbitron',       bg: '#020610', text: '#DFFFF6', accent: '#00FFB2', secondary: '#FF007A', card: 'rgba(0,255,178,0.04)',    glass: 'rgba(0,12,30,0.88)'    },
+  // Anti-design manifesto � pure white, pure black, pure red only
+  brutalist:        { font: 'Space Mono',     bg: '#FFFFFF', text: '#000000', accent: '#FF0000', secondary: '#CC0000', card: 'rgba(255,255,255,0.95)',  glass: 'rgba(238,238,238,0.90)' },
+  // Creative studio � lilac mist, vivid fuchsia, hot-orange pop
+  colorful:         { font: 'Nunito',         bg: '#FCF5FF', text: '#1A0830', accent: '#D946EF', secondary: '#F97316', card: 'rgba(252,245,255,0.88)',  glass: 'rgba(238,215,255,0.58)' },
+  // Victorian study � warm parchment, amber ink, antiquarian feel
+  classic:          { font: 'EB Garamond',    bg: '#F9F2DF', text: '#2A1500', accent: '#9B6400', secondary: '#6B3F00', card: 'rgba(249,242,223,0.90)',  glass: 'rgba(232,218,188,0.65)' },
+  // Playful structure � warm cream, thick-border tension, burnt orange
+  'neo-brutalist':  { font: 'Space Grotesk',  bg: '#FFFBEE', text: '#111111', accent: '#FF5722', secondary: '#00ACC1', card: 'rgba(255,251,238,0.93)',  glass: 'rgba(245,240,220,0.72)' },
+  // Primary-school joy � sunshine yellow, deep violet, candy accents
+  kids:             { font: 'Fredoka One',    bg: '#FFFDE7', text: '#1A0050', accent: '#FF4081', secondary: '#00BFA5', card: 'rgba(255,253,231,0.92)',  glass: 'rgba(255,244,200,0.62)' },
+  // Okabe-Ito precision � pure white, accessible blue + orange
+  'colorblind-safe':{ font: 'Outfit',         bg: '#FFFFFF', text: '#111111', accent: '#0072B2', secondary: '#E69F00', card: 'rgba(255,255,255,0.92)',  glass: 'rgba(228,241,255,0.58)' },
+  // Anthropic Claude -- warm cream, humanist sans, coral-terracotta signature
+  claude:           { font: 'Plus Jakarta Sans', bg: '#FAF9F7', text: '#1C1917', accent: '#DA7756', secondary: '#B5856A', card: 'rgba(250,249,247,0.92)',  glass: 'rgba(236,228,218,0.60)' },
 };
 
 // ─── Input sanitisation ───────────────────────────────────────────────────────

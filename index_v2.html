@@ -21,14 +21,15 @@
   --ink-2:      #3a3a3a;
   --ink-3:      #6b6b6b;
   --ink-4:      #9a9a9a;
-  --surface:    #f4f1ec;       /* warm off-white, not sterile */
+  --surface:    #f4f1ec;
   --surface-2:  #eceae4;
   --surface-3:  #e2dfd7;
   --border:     #d4d0c8;
   --border-2:   #c4c0b6;
-  --primary:    #1a1a2e;       /* deep navy — single authority color */
-  --signal:     #c84b31;       /* used sparingly: errors, required marks */
-  --active:     #1a1a2e;       /* same as primary for consistency */
+  --primary:    #1a1a2e;
+  --signal:     #c84b31;
+  --active:     #1a1a2e;
+  --btn-text:   #f4f1ec;  /* button label — contrast-safe per theme */
 
   /* Typography scale — 8 steps, ratio ~1.25 */
   --text-xs:    0.694rem;   /* 11px */
@@ -74,6 +75,7 @@ body {
   font-size: var(--text-base);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* ─── Narrow content lane ─── */
@@ -91,6 +93,7 @@ header {
   top: 0;
   background: var(--surface);
   z-index: 50;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 .header-inner {
   max-width: 680px;
@@ -234,8 +237,10 @@ input:hover, textarea:hover, select:hover {
 }
 input:focus, textarea:focus, select:focus {
   border-color: var(--primary);
-  background: #fff;
-  box-shadow: 0 0 0 2px rgba(26,26,46,0.08);
+  background: var(--surface-2);
+  /* fallback first, then color-mix for supporting browsers */
+  box-shadow: 0 0 0 2px rgba(0,0,0,0.08);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--primary) 12%, transparent);
 }
 input::placeholder, textarea::placeholder {
   color: var(--ink-4);
@@ -249,7 +254,7 @@ select {
   padding-right: var(--s7);
   cursor: pointer;
 }
-select option { background: #fff; color: var(--ink); }
+select option { background: var(--surface); color: var(--ink); }
 
 /* ─── Toggles — small, honest ─── */
 .toggle-pair {
@@ -413,7 +418,7 @@ select option { background: #fff; color: var(--ink); }
   width: 100%;
   padding: var(--s4) var(--s5);
   background: var(--primary);
-  color: var(--surface);
+  color: var(--btn-text);
   border: 1px solid var(--primary);
   border-radius: var(--r2);
   font-family: 'IBM Plex Mono', monospace;
@@ -422,6 +427,8 @@ select option { background: #fff; color: var(--ink); }
   letter-spacing: 0.04em;
   cursor: pointer;
   transition: background var(--t-fast) var(--ease-out),
+              color var(--t-fast) var(--ease-out),
+              border-color var(--t-fast) var(--ease-out),
               transform var(--t-fast) var(--ease-out),
               box-shadow var(--t-fast) var(--ease-out);
   display: flex;
@@ -430,12 +437,13 @@ select option { background: #fff; color: var(--ink); }
   gap: var(--s3);
 }
 .btn-generate:hover:not(:disabled) {
-  background: #2a2a4e;
-  box-shadow: 0 2px 12px rgba(26,26,46,0.22);
+  filter: brightness(1.15);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.22);
   transform: translateY(-1px);
 }
 .btn-generate:active:not(:disabled) {
   transform: translateY(0);
+  filter: brightness(0.95);
   box-shadow: none;
 }
 .btn-generate:disabled {
@@ -495,6 +503,7 @@ select option { background: #fff; color: var(--ink); }
   padding-top: var(--s7);
   border-top: 2px solid var(--ink);
   animation: fadeUp var(--t-slow) var(--ease-out) both;
+  transition: border-color 0.25s ease;
 }
 .viewer-section.on { display: block; }
 
@@ -546,7 +555,7 @@ select option { background: #fff; color: var(--ink); }
   background: var(--primary);
   border: 1px solid var(--primary);
   border-radius: var(--r2);
-  color: var(--surface);
+  color: var(--btn-text);
   font-family: 'IBM Plex Mono', monospace;
   font-size: var(--text-xs);
   cursor: pointer;
@@ -554,7 +563,7 @@ select option { background: #fff; color: var(--ink); }
   letter-spacing: 0.03em;
   white-space: nowrap;
 }
-.btn-solid:hover { background: #2a2a4e; box-shadow: 0 2px 8px rgba(26,26,46,0.2); transform: translateY(-1px); }
+.btn-solid:hover { filter: brightness(1.12); box-shadow: 0 2px 8px rgba(0,0,0,0.2); transform: translateY(-1px); }
 .btn-solid:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
 
 /* ─── Slide thumbnails ─── */
@@ -598,7 +607,7 @@ select option { background: #fff; color: var(--ink); }
 
 /* ─── Main slide frame ─── */
 .slide-frame {
-  border: 1px solid var(--border);
+  border: 1px solid var(--th-accent, var(--border));
   border-radius: var(--r3);
   width: 100%;
   aspect-ratio: 16 / 9;
@@ -885,6 +894,7 @@ footer {
                 <option value="classic">Classic</option>
                 <option value="kids">Kids</option>
                 <option value="colorblind-safe">Colorblind Safe</option>
+                <option value="claude">Claude</option>
               </select>
             </div>
             <div class="field-row" style="gap:var(--s3)">
@@ -1084,6 +1094,157 @@ function resetTheme() {
 }
 
 /* ──────────────────────────────
+   Live UI Theme Engine
+   Mirrors server-side THEMES — updates CSS vars on :root instantly
+   when the user picks a theme, giving a real-time preview.
+────────────────────────────── */
+const UI_THEMES = {
+  minimalist: {
+    font: 'DM Sans',
+    surface: '#FEFEFE', surface2: '#F2F6FF', surface3: '#E4ECFA',
+    ink: '#1A1A1A', ink2: '#3C3C3C', ink3: '#6E6E6E', ink4: '#A0A0A0',
+    border: '#DDE4F0', border2: '#C8D2E8',
+    primary: '#3B7DD8', signal: '#C0392B', btnText: '#ffffff'
+  },
+  professional: {
+    font: 'Merriweather',
+    surface: '#0F1E3A', surface2: '#182848', surface3: '#203460',
+    ink: '#E8EDF8', ink2: '#B8C8E4', ink3: '#7890B8', ink4: '#4860A0',
+    border: '#253760', border2: '#304878',
+    primary: '#4D9FFF', signal: '#FF6B6B', btnText: '#0F1E3A'
+  },
+  dark: {
+    font: 'Syne',
+    surface: '#07090F', surface2: '#0E1020', surface3: '#161830',
+    ink: '#EDE8F8', ink2: '#C0B4E0', ink3: '#8870B8', ink4: '#504080',
+    border: '#1C1838', border2: '#28224C',
+    primary: '#A78BFA', signal: '#F87171', btnText: '#07090F'
+  },
+  scientific: {
+    font: 'Source Serif 4',
+    surface: '#F4F7FF', surface2: '#E8EFFE', surface3: '#D8E4FC',
+    ink: '#0D1E3C', ink2: '#1E3560', ink3: '#4A68A8', ink4: '#7898C8',
+    border: '#C0D0EE', border2: '#A8BCDE',
+    primary: '#1A56DB', signal: '#DC2626', btnText: '#ffffff'
+  },
+  cyberpunk: {
+    font: 'Orbitron',
+    surface: '#020610', surface2: '#060E20', surface3: '#0A1530',
+    ink: '#DFFFF6', ink2: '#90DEC8', ink3: '#409898', ink4: '#205858',
+    border: '#082030', border2: '#103040',
+    primary: '#00FFB2', signal: '#FF007A', btnText: '#020610'
+  },
+  brutalist: {
+    font: 'Space Mono',
+    surface: '#FFFFFF', surface2: '#F0F0F0', surface3: '#E0E0E0',
+    ink: '#000000', ink2: '#1A1A1A', ink3: '#4A4A4A', ink4: '#7A7A7A',
+    border: '#000000', border2: '#2A2A2A',
+    primary: '#FF0000', signal: '#FF0000', btnText: '#FFFFFF'
+  },
+  colorful: {
+    font: 'Nunito',
+    surface: '#FCF5FF', surface2: '#F4E8FF', surface3: '#E8D0FF',
+    ink: '#1A0830', ink2: '#381060', ink3: '#7040A8', ink4: '#A870D8',
+    border: '#D8B0F0', border2: '#C898E8',
+    primary: '#D946EF', signal: '#FF3D00', btnText: '#ffffff'
+  },
+  classic: {
+    font: 'EB Garamond',
+    surface: '#F9F2DF', surface2: '#F0E6C8', surface3: '#E5D4A8',
+    ink: '#2A1500', ink2: '#4A2800', ink3: '#7A5830', ink4: '#AA8860',
+    border: '#D8C890', border2: '#C0B078',
+    primary: '#9B6400', signal: '#B03020', btnText: '#F9F2DF'
+  },
+  'neo-brutalist': {
+    font: 'Space Grotesk',
+    surface: '#FFFBEE', surface2: '#FFF0CC', surface3: '#FFE4A8',
+    ink: '#111111', ink2: '#222222', ink3: '#555555', ink4: '#888888',
+    border: '#111111', border2: '#333333',
+    primary: '#FF5722', signal: '#CC0000', btnText: '#ffffff'
+  },
+  kids: {
+    font: 'Fredoka One',
+    surface: '#FFFDE7', surface2: '#FFF4B8', surface3: '#FFE880',
+    ink: '#1A0050', ink2: '#3A0080', ink3: '#7030A8', ink4: '#A868D0',
+    border: '#F8C0D8', border2: '#F4A0C8',
+    primary: '#FF4081', signal: '#FF1744', btnText: '#ffffff'
+  },
+  'colorblind-safe': {
+    font: 'Outfit',
+    surface: '#FFFFFF', surface2: '#EEF4FB', surface3: '#DDE8F6',
+    ink: '#111111', ink2: '#2A3A4A', ink3: '#5A6A7A', ink4: '#8A9AAA',
+    border: '#C0D0DC', border2: '#A8B8C8',
+    primary: '#0072B2', signal: '#CC3311', btnText: '#ffffff'
+  }
+  claude: {
+    font: 'Plus Jakarta Sans',
+    surface: '#FAF9F7', surface2: '#F0EBE3', surface3: '#E6DDD4',
+    ink: '#1C1917', ink2: '#3D2E28', ink3: '#78584E', ink4: '#A88278',
+    border: '#E8DDD4', border2: '#D8C8BA',
+    primary: '#DA7756', signal: '#C0392B', btnText: '#ffffff'
+  }
+};
+
+function applyUITheme(key) {
+  const t = UI_THEMES[key] || UI_THEMES.minimalist;
+  const r = document.documentElement.style;
+  loadFont(t.font);
+  r.setProperty('--surface',   t.surface);
+  r.setProperty('--surface-2', t.surface2);
+  r.setProperty('--surface-3', t.surface3);
+  r.setProperty('--ink',       t.ink);
+  r.setProperty('--ink-2',     t.ink2);
+  r.setProperty('--ink-3',     t.ink3);
+  r.setProperty('--ink-4',     t.ink4);
+  r.setProperty('--border',    t.border);
+  r.setProperty('--border-2',  t.border2);
+  r.setProperty('--primary',   t.primary);
+  r.setProperty('--active',    t.primary);
+  r.setProperty('--signal',    t.signal);
+  r.setProperty('--btn-text',  t.btnText || '#ffffff');
+  // Apply theme display font to the brand and page heading
+  const displayFont = `'${t.font}', Georgia, serif`;
+  document.querySelector('.brand').style.fontFamily          = displayFont;
+  document.querySelector('.page-intro h1').style.fontFamily  = displayFont;
+}
+
+function resetUITheme() {
+  const r = document.documentElement.style;
+  ['--surface','--surface-2','--surface-3',
+   '--ink','--ink-2','--ink-3','--ink-4',
+   '--border','--border-2','--primary','--active','--signal','--btn-text'
+  ].forEach(v => r.removeProperty(v));
+  // Restore default fonts
+  document.querySelector('.brand').style.fontFamily         = '';
+  document.querySelector('.page-intro h1').style.fontFamily = '';
+}
+
+// Wire theme select to live preview
+// Also re-applies slide frame theme if a presentation is already loaded
+document.getElementById('ppt-theme').addEventListener('change', function() {
+  applyUITheme(this.value);
+  // If slides are already rendered, also update the slide frame theme
+  // so the preview stays in sync with the selected theme
+  if (presentationData?.theme_config) {
+    // Build a transient theme config from UI_THEMES to preview the new theme
+    const previewKey = this.value;
+    const ut = UI_THEMES[previewKey];
+    if (ut) {
+      applyTheme({
+        bg:        ut.surface,
+        text:      ut.ink,
+        accent:    ut.primary,
+        secondary: ut.ink3,
+        font:      ut.font
+      });
+    }
+  }
+});
+
+// Auto-apply the default theme on first paint
+applyUITheme(document.getElementById('ppt-theme').value || 'minimalist');
+
+/* ──────────────────────────────
    Toggles
 ────────────────────────────── */
 function toggleTrack(id, itemEl) {
@@ -1092,8 +1253,30 @@ function toggleTrack(id, itemEl) {
   // Sync ARIA state on the parent toggle-item
   const el = itemEl || track.closest('.toggle-item');
   if (el) el.setAttribute('aria-checked', track.classList.contains('on'));
+  syncGlobalToggles();
 }
 function isOn(id) { return document.getElementById(id).classList.contains('on'); }
+
+function syncGlobalToggles() {
+  const graphsOn = isOn('tg-graphs');
+  const diagramsOn = isOn('tg-diagrams');
+  
+  document.querySelectorAll('#slides-list .slide-item select').forEach(sel => {
+    Array.from(sel.options).forEach(opt => {
+      const isChart = ['bar_chart', 'line_chart', 'pie_chart'].includes(opt.value);
+      const isDiagram = ['flow_diagram', 'tree_diagram', 'block_diagram'].includes(opt.value);
+      if (isChart) opt.disabled = !graphsOn;
+      if (isDiagram) opt.disabled = !diagramsOn;
+    });
+    
+    const selected = sel.value;
+    const isChart = ['bar_chart', 'line_chart', 'pie_chart'].includes(selected);
+    const isDiagram = ['flow_diagram', 'tree_diagram', 'block_diagram'].includes(selected);
+    if ((isChart && !graphsOn) || (isDiagram && !diagramsOn)) {
+      sel.value = 'auto';
+    }
+  });
+}
 
 /* ──────────────────────────────
    Slide Builder
@@ -1135,6 +1318,17 @@ function addSlide() {
   list.appendChild(div);
   syncListVisibility();
   renumber();
+  syncGlobalToggles();
+  
+  const maxEl = document.getElementById('max-slides');
+  const minEl = document.getElementById('min-slides');
+  const currentCount = list.children.length;
+  let maxV = parseInt(maxEl.value, 10) || 10;
+  
+  if (currentCount > maxV) {
+    maxEl.value = currentCount > 32 ? 32 : currentCount;
+    validateSlideRange();
+  }
 }
 
 function removeSlide(id) {
@@ -1171,12 +1365,21 @@ function getSlideItems() {
 function validateSlideRange() {
   const minEl = document.getElementById('min-slides');
   const maxEl = document.getElementById('max-slides');
+  const genBtn = document.getElementById('generate-btn');
   const min = parseInt(minEl.value, 10) || 3;
   const max = parseInt(maxEl.value, 10) || 32;
   if (min > max) {
     minEl.style.borderColor = 'var(--signal)';
     maxEl.style.borderColor = 'var(--signal)';
+    genBtn.disabled = true;
+    showError('Min slides cannot be greater than max slides.');
   } else {
+    minEl.style.borderColor = '';
+    maxEl.style.borderColor = '';
+    genBtn.disabled = false;
+    clearError();
+  }
+} else {
     minEl.style.borderColor = '';
     maxEl.style.borderColor = '';
   }
@@ -1249,6 +1452,7 @@ async function generate() {
     clearInterval(progInterval);
     bar.style.width = '100%';
     msgEl.textContent = 'Done.';
+    document.getElementById('status-dot').innerHTML = 'System � Rendered';
 
     await new Promise(r => setTimeout(r, 300));
 
@@ -1264,6 +1468,7 @@ async function generate() {
     bar.style.width = '0%';
     btn.disabled = false;
     genLabel.textContent = 'Generate presentation';
+    document.getElementById('status-dot').innerHTML = 'System � Ready';
   }
 }
 
@@ -1465,7 +1670,8 @@ function resetView() {
   document.getElementById('notes-tog').textContent = 'notes';
   document.getElementById('slide-nav').classList.remove('ready');
   document.getElementById('slide-count').textContent = '';
-  resetTheme(); // clear theme styles from the frame
+  resetTheme(); // clear slide-frame theme styles
+  // Keep the UI theme as-is (user's selected theme stays active)
   setTimeout(() => {
     document.getElementById('viewer-section').classList.remove('on');
   }, 500);
@@ -1475,7 +1681,7 @@ document.addEventListener('keydown', e => {
   // Only fire keyboard nav when NOT focused inside a text input or textarea
   const tag = document.activeElement?.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
-  if (!presentationData) return;
+  if (!presentationData || !slides || !slides.length) return;
   if (e.key === 'ArrowRight' || e.key === 'ArrowDown') navigate(1);
   if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   navigate(-1);
 });
