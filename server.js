@@ -40,30 +40,18 @@ const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
 // ─── Themes ──────────────────────────────────────────────────────────────────
 const THEMES = {
-  // Swiss/Bauhaus � airy white, single muted-blue accent, DM Sans
-  minimalist:       { font: 'DM Sans',        bg: '#FEFEFE', text: '#1A1A1A', accent: '#3B7DD8', secondary: '#93B4DC', card: 'rgba(255,255,255,0.92)',  glass: 'rgba(240,246,255,0.55)' },
-  // Corporate authority � deep navy canvas, cool steel, precise
-  professional:     { font: 'Merriweather',   bg: '#0F1E3A', text: '#E8EDF8', accent: '#4D9FFF', secondary: '#8BBEFF', card: 'rgba(15,30,58,0.88)',     glass: 'rgba(30,55,100,0.55)'  },
-  // Moody editorial � near-black, violet glow, magenta spark
-  dark:             { font: 'Syne',           bg: '#07090F', text: '#EDE8F8', accent: '#A78BFA', secondary: '#F472B6', card: 'rgba(18,14,35,0.82)',     glass: 'rgba(12,10,28,0.65)'   },
-  // Blueprint academic � cool linen, ink-blue type, data-precise
-  scientific:       { font: 'Source Serif 4', bg: '#F4F7FF', text: '#0D1E3C', accent: '#1A56DB', secondary: '#0891B2', card: 'rgba(228,237,255,0.80)',  glass: 'rgba(210,226,255,0.52)' },
-  // Neon-noir underground � pitch black, electric teal + hot pink
-  cyberpunk:        { font: 'Orbitron',       bg: '#020610', text: '#DFFFF6', accent: '#00FFB2', secondary: '#FF007A', card: 'rgba(0,255,178,0.04)',    glass: 'rgba(0,12,30,0.88)'    },
-  // Anti-design manifesto � pure white, pure black, pure red only
-  brutalist:        { font: 'Space Mono',     bg: '#FFFFFF', text: '#000000', accent: '#FF0000', secondary: '#CC0000', card: 'rgba(255,255,255,0.95)',  glass: 'rgba(238,238,238,0.90)' },
-  // Creative studio � lilac mist, vivid fuchsia, hot-orange pop
-  colorful:         { font: 'Nunito',         bg: '#FCF5FF', text: '#1A0830', accent: '#D946EF', secondary: '#F97316', card: 'rgba(252,245,255,0.88)',  glass: 'rgba(238,215,255,0.58)' },
-  // Victorian study � warm parchment, amber ink, antiquarian feel
-  classic:          { font: 'EB Garamond',    bg: '#F9F2DF', text: '#2A1500', accent: '#9B6400', secondary: '#6B3F00', card: 'rgba(249,242,223,0.90)',  glass: 'rgba(232,218,188,0.65)' },
-  // Playful structure � warm cream, thick-border tension, burnt orange
-  'neo-brutalist':  { font: 'Space Grotesk',  bg: '#FFFBEE', text: '#111111', accent: '#FF5722', secondary: '#00ACC1', card: 'rgba(255,251,238,0.93)',  glass: 'rgba(245,240,220,0.72)' },
-  // Primary-school joy � sunshine yellow, deep violet, candy accents
-  kids:             { font: 'Fredoka One',    bg: '#FFFDE7', text: '#1A0050', accent: '#FF4081', secondary: '#00BFA5', card: 'rgba(255,253,231,0.92)',  glass: 'rgba(255,244,200,0.62)' },
-  // Okabe-Ito precision � pure white, accessible blue + orange
-  'colorblind-safe':{ font: 'Outfit',         bg: '#FFFFFF', text: '#111111', accent: '#0072B2', secondary: '#E69F00', card: 'rgba(255,255,255,0.92)',  glass: 'rgba(228,241,255,0.58)' },
-  // Anthropic Claude -- warm cream, humanist sans, coral-terracotta signature
-  claude:           { font: 'Plus Jakarta Sans', bg: '#FAF9F7', text: '#1C1917', accent: '#DA7756', secondary: '#B5856A', card: 'rgba(250,249,247,0.92)',  glass: 'rgba(236,228,218,0.60)' },
+  minimalist:       { font: 'DM Sans',        bg: '#FEFEFE', text: '#1A1A1A', accent: '#3B7DD8', secondary: '#93B4DC', card: 'rgba(255,255,255,0.92)',  glass: 'rgba(240,246,255,0.55)', uiRadius: '4px', uiBorderW: '1px', uiShadow: '0 4px 20px rgba(59, 125, 216, 0.1)' },
+  professional:     { font: 'Merriweather',   bg: '#0F1E3A', text: '#E8EDF8', accent: '#4D9FFF', secondary: '#8BBEFF', card: 'rgba(15,30,58,0.88)',     glass: 'rgba(30,55,100,0.55)',   uiRadius: '2px', uiBorderW: '1px', uiShadow: '0 2px 10px rgba(0,0,0,0.4)' },
+  dark:             { font: 'Syne',           bg: '#07090F', text: '#EDE8F8', accent: '#A78BFA', secondary: '#F472B6', card: 'rgba(18,14,35,0.82)',     glass: 'rgba(12,10,28,0.65)',    uiRadius: '6px', uiBorderW: '1px', uiShadow: '0 4px 24px rgba(167, 139, 250, 0.15)' },
+  scientific:       { font: 'Source Serif 4', bg: '#F4F7FF', text: '#0D1E3C', accent: '#1A56DB', secondary: '#0891B2', card: 'rgba(228,237,255,0.80)',  glass: 'rgba(210,226,255,0.52)', uiRadius: '0px', uiBorderW: '1px', uiShadow: '0 2px 4px rgba(26, 86, 219, 0.1)' },
+  cyberpunk:        { font: 'Orbitron',       bg: '#020610', text: '#DFFFF6', accent: '#00FFB2', secondary: '#FF007A', card: 'rgba(0,255,178,0.04)',    glass: 'rgba(0,12,30,0.88)',     uiRadius: '0px', uiBorderW: '1px', uiShadow: '0 0 10px rgba(0, 255, 178, 0.4)' },
+  brutalist:        { font: 'Space Mono',     bg: '#FFFFFF', text: '#000000', accent: '#FF0000', secondary: '#CC0000', card: 'rgba(255,255,255,0.95)',  glass: 'rgba(238,238,238,0.90)', uiRadius: '0px', uiBorderW: '2px', uiShadow: 'none' },
+  colorful:         { font: 'Nunito',         bg: '#FCF5FF', text: '#1A0830', accent: '#D946EF', secondary: '#F97316', card: 'rgba(252,245,255,0.88)',  glass: 'rgba(238,215,255,0.58)', uiRadius: '12px', uiBorderW: '0px', uiShadow: '0 8px 24px rgba(217, 70, 239, 0.2)' },
+  classic:          { font: 'EB Garamond',    bg: '#F9F2DF', text: '#2A1500', accent: '#9B6400', secondary: '#6B3F00', card: 'rgba(249,242,223,0.90)',  glass: 'rgba(232,218,188,0.65)', uiRadius: '2px', uiBorderW: '1px', uiShadow: '0 4px 10px rgba(42, 21, 0, 0.15)' },
+  'neo-brutalist':  { font: 'Space Grotesk',  bg: '#FFFBEE', text: '#111111', accent: '#FF5722', secondary: '#00ACC1', card: 'rgba(255,251,238,0.93)',  glass: 'rgba(245,240,220,0.72)', uiRadius: '6px', uiBorderW: '3px', uiShadow: '4px 4px 0px #111111' },
+  kids:             { font: 'Fredoka One',    bg: '#FFFDE7', text: '#1A0050', accent: '#FF4081', secondary: '#00BFA5', card: 'rgba(255,253,231,0.92)',  glass: 'rgba(255,244,200,0.62)', uiRadius: '24px', uiBorderW: '3px', uiShadow: '0 8px 0px rgba(255, 64, 129, 0.2)' },
+  'colorblind-safe':{ font: 'Outfit',         bg: '#FFFFFF', text: '#111111', accent: '#0072B2', secondary: '#D55E00', card: 'rgba(255,255,255,0.95)',  glass: 'rgba(240,248,255,0.65)', uiRadius: '4px', uiBorderW: '2px', uiShadow: '0 4px 12px rgba(0, 114, 178, 0.15)' },
+  claude:           { font: 'Plus Jakarta Sans', bg: '#FAF9F7', text: '#1C1917', accent: '#DA7756', secondary: '#78584E', card: 'rgba(250,249,247,0.95)', glass: 'rgba(240,235,227,0.60)', uiRadius: '8px', uiBorderW: '1px', uiShadow: '0 2px 8px rgba(28, 25, 23, 0.05)' }
 };
 
 // ─── Input sanitisation ───────────────────────────────────────────────────────
@@ -100,26 +88,16 @@ function validateSVG(code) {
 function buildSystemPrompt(theme, totalSlides, themeConfig, graphs_enabled, diagrams_enabled) {
   const needsVisuals = graphs_enabled || diagrams_enabled;
   const svgPrompt = needsVisuals ? `
-You are a data visualization SVG expert. For each slide needing a visual, generate raw SVG code in the "svg_code" field.
-CORE: Readability > aesthetics, clear purpose, NO overlapping elements. DO NOT hallucinate facts or make up false statistical data. If exact metrics are absent, use qualitative or generalized markers instead of fabricated absolute numbers.
-STRUCTURE: Proper margins (min 24px padding), grid/axis alignment, clear hierarchy (title, labels, data, legend). Minimum 16px element spacing.
-GRAPHS: Visible axes, labeled ticks, even spacing. Bars/lines must NOT touch.
-DIAGRAMS: Clear flow (top-bottom/left-right), equal node spacing, non-crossing lines, consistent strokes, arrowheads.
-STYLE: Single font, no text wrapping, NO gradients/shadows/decorators/icons. Maintain aspect ratio balance.
-COLORS: Use ONLY theme bg (${themeConfig.bg}), text (${themeConfig.text}), primary/accent (${themeConfig.accent}), secondary (${themeConfig.secondary}).` : '';
+SVG EXPERT. Raw SVG in "svg_code". NO OVERLAPS. NO HALLUCINATION.
+MARGINS: min 24px. SPACING: min 16px. Align to grid.
+GRAPHS: Labeled axes. Bars/lines DON'T touch.
+DIAGRAMS: Clear flow. No crossing lines.
+STYLE: Single font, no wrap/gradients/shadows.
+COLORS: bg(${themeConfig.bg}), text(${themeConfig.text}), accent(${themeConfig.accent}), sec(${themeConfig.secondary}).
+GEOMETRY: rect rx="${themeConfig.uiRadius || '4px'}". stroke-width="${themeConfig.uiBorderW || '1px'}".` : '';
 
-  return `You are an expert presentation architect. Generate a structured JSON presentation.
-
+  return `EXPERT PPT ARCHITECT. Output ONLY JSON.
 RULES:
-- Output ONLY valid JSON, no markdown, no explanation
-- Each slide has: id, title, bullets (array of strings, MAX 4 bullets strictly enforced, max 10 words each. NO paragraphs), needs_visual, visual_type, layout, speaker_notes${needsVisuals ? ', svg_code (string)' : ''}
-- visual_type: "bar_chart" | "line_chart" | "pie_chart" | "flow_diagram" | "tree_diagram" | "block_diagram" | "none"
-- layout: "title-content" | "title-content-visual-right" | "title-content-visual-bottom" | "centered-visual" | "title-only"
-- First slide is always the title slide with layout "title-only"
-- Last slide can be a summary or conclusion
-- Assign visuals semantically: numbers→bar/line, process→flow, comparison→bar, hierarchy→tree
-- CONTENT DENSITY: No redundant information. Use precise, accurate, professional terminology throughout.
-- STRICT FACTUALITY: Do not hallucinate or fabricate facts, metrics, or statistics. Stay conceptual when data is unknown.
 - Total slides: ${totalSlides}
 - Theme: ${theme}
 ${svgPrompt}
@@ -148,7 +126,9 @@ Output format:
 // ─── Fallback local SVG builder (no dummy data) ───────────────────────────────
 function buildSVG(visual_type, visual_data, theme) {
   const t = THEMES[theme] || THEMES.minimalist;
-  const { accent, text, secondary } = t;
+    const { accent, text, secondary, uiRadius, uiBorderW } = t;
+  const rx = uiRadius ? parseInt(uiRadius) : 4;
+  const strokeW = uiBorderW ? parseFloat(uiBorderW) : 1;
 
   // Require real labels and values — never fabricate fallback data
   if (!visual_data?.labels?.length || !visual_data?.values?.length) return null;
@@ -165,7 +145,7 @@ function buildSVG(visual_type, visual_data, theme) {
       const x = 30 + i * (barW + 10);
       const y = 180 - h;
       return `
-        <rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${accent}" rx="4" opacity="0.85"/>
+        <rect x="${x}" y="${y}" width="${barW}" height="${h}" fill="${accent}" rx="${rx}" opacity="0.85"/>
         <text x="${x + barW / 2}" y="198" text-anchor="middle" fill="${text}" font-size="9" font-family="sans-serif">${label}</text>
         <text x="${x + barW / 2}" y="${y - 4}" text-anchor="middle" fill="${accent}" font-size="9" font-family="sans-serif">${values[i]}</text>
       `;
@@ -236,10 +216,10 @@ function buildSVG(visual_type, visual_data, theme) {
       const x     = 30 + i * (BOX_W + GAP);
       // Arrow runs from end of current box to start of next box
       const arrow = i < steps.length - 1
-        ? `<line x1="${x + BOX_W}" y1="100" x2="${x + BOX_W + GAP - 2}" y2="100" stroke="${accent}" stroke-width="2" marker-end="url(#arrow)"/>`
+        ? `<line x1="${x + BOX_W}" y1="100" x2="${x + BOX_W + GAP - 2}" y2="100" stroke="${accent}" stroke-width="${strokeW}" marker-end="url(#arrow)"/>`
         : '';
       return `
-        <rect x="${x}" y="80" width="68" height="40" rx="8" fill="${accent}" opacity="0.15" stroke="${accent}" stroke-width="1.5"/>
+        <rect x="${x}" y="80" width="68" height="40" rx="${rx}" fill="${accent}" opacity="0.15" stroke="${accent}" stroke-width="${strokeW}"/>
         <text x="${x + 34}" y="97" text-anchor="middle" fill="${text}" font-size="9" font-family="sans-serif" font-weight="bold">${s.substring(0, 10)}</text>
         <text x="${x + 34}" y="110" text-anchor="middle" fill="${text}" font-size="8" font-family="sans-serif">${i + 1}</text>
         ${arrow}
@@ -258,13 +238,13 @@ function buildSVG(visual_type, visual_data, theme) {
     const childNodes = children.map((c, i) => {
       const x = 50 + i * 85;
       return `
-        <line x1="190" y1="85" x2="${x + 40}" y2="130" stroke="${accent}" stroke-width="1.5" opacity="0.5"/>
+        <line x1="190" y1="85" x2="${x + 40}" y2="130" stroke="${accent}" stroke-width="${strokeW}" opacity="0.5"/>
         <rect x="${x}" y="130" width="80" height="32" rx="6" fill="${secondary}" opacity="0.2" stroke="${secondary}" stroke-width="1.2"/>
         <text x="${x + 40}" y="151" text-anchor="middle" fill="${text}" font-size="9" font-family="sans-serif">${c.substring(0, 10)}</text>
       `;
     }).join('');
     return `<svg viewBox="0 0 380 200" xmlns="http://www.w3.org/2000/svg">
-      <rect x="130" y="40" width="120" height="40" rx="8" fill="${accent}" opacity="0.2" stroke="${accent}" stroke-width="1.5"/>
+      <rect x="130" y="40" width="120" height="40" rx="${rx}" fill="${accent}" opacity="0.2" stroke="${accent}" stroke-width="${strokeW}"/>
       <text x="190" y="65" text-anchor="middle" fill="${text}" font-size="11" font-weight="bold" font-family="sans-serif">${root.substring(0, 15)}</text>
       ${childNodes}
     </svg>`;
@@ -279,7 +259,7 @@ function buildSVG(visual_type, visual_data, theme) {
         const y    = 50 + ri * 80;
         const fill = ri === 0 ? accent : secondary;
         return `
-          <rect x="${x}" y="${y}" width="100" height="50" rx="8" fill="${fill}" opacity="0.18" stroke="${fill}" stroke-width="1.5"/>
+          <rect x="${x}" y="${y}" width="100" height="50" rx="${rx}" fill="${fill}" opacity="0.18" stroke="${fill}" stroke-width="${strokeW}"/>
           <text x="${x + 50}" y="${y + 30}" text-anchor="middle" fill="${text}" font-size="9" font-family="sans-serif" font-weight="bold">${b.substring(0, 12)}</text>
         `;
       }).join('')
@@ -345,7 +325,7 @@ app.post('/api/generate', async (req, res) => {
 
     const slideTopics = Array.isArray(inputSlides) && inputSlides.length
       ? `Slide topics (respect the visual preference hint on each slide):\n${inputSlides.map((s, i) => {
-          const t       = sanitizeText(s.title, 100) || `Slide ${i + 1}`;
+          const t       = sanitizeText(s.title, 100) || `Auto-generate topic`;
           const wantsVis = s.needs_visual !== false;
           const vt       = VALID_VIS.has(s.visual_type) ? s.visual_type : 'auto';
           const hint     = !wantsVis          ? ' [no visual]'
@@ -354,13 +334,13 @@ app.post('/api/generate', async (req, res) => {
         }).join('\n')}`
       : `Select and adapt the most appropriate topics from this standard structure to fit the ${slideCount}-slide constraint:\n- ${DEFAULT_TEMPLATE.join('\n- ')}`;
 
-    const userPrompt = `Create a presentation titled: "${title}"
+    const userPrompt = `Title: "${title}"
 Author: ${author || 'Unknown'}
-Additional context: ${details || 'None'}
-Number of slides: ${slideCount}
+Context: ${details || 'None'}
+Slides: ${slideCount}
 ${slideTopics}
-Graphs enabled: ${graphs_enabled}
-Diagrams enabled: ${diagrams_enabled}`;
+Graphs: ${graphs_enabled}
+Diagrams: ${diagrams_enabled}`;
 
     const model = process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
     const completion = await groq.chat.completions.create({
@@ -370,7 +350,7 @@ Diagrams enabled: ${diagrams_enabled}`;
         { role: 'user',   content: userPrompt }
       ],
       temperature: 0.7,
-      max_completion_tokens: 8192
+      max_completion_tokens: 4000
     });
 
     let raw = completion.choices[0]?.message?.content?.trim();
@@ -403,20 +383,23 @@ Diagrams enabled: ${diagrams_enabled}`;
     if (Array.isArray(inputSlides)) {
       inputSlides.forEach((s, i) => {
         const key = sanitizeText(s.title, 100) || `Slide ${i + 1}`;
-        if (s.needs_visual === false) userVisMap.set(key.toLowerCase(), false);
+        if (s.needs_visual === false) {
+          userVisMap.set(key.toLowerCase(), false);
+          userVisMap.set(`__idx_${i}`, false);
+        }
       });
     }
 
     // ── Post-process slides ──
-    parsed.slides = parsed.slides.map(slide => {
+    parsed.slides = parsed.slides.map((slide, i) => {
       // Enforce max 4 bullets server-side
       if (Array.isArray(slide.bullets)) {
         slide.bullets = slide.bullets.slice(0, 4);
       }
 
-      // Enforce user's explicit "no visual" preference for this slide title
+      // Enforce user's explicit "no visual" preference for this slide title or index
       const titleKey = (typeof slide.title === 'string' ? slide.title : '').toLowerCase();
-      if (userVisMap.get(titleKey) === false) {
+      if (userVisMap.get(titleKey) === false || userVisMap.get(`__idx_${i}`) === false) {
         slide.needs_visual = false;
         slide.svg = null;
         delete slide.svg_code;
