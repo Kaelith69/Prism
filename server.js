@@ -73,13 +73,15 @@ function buildOutlinePrompt(theme, totalSlides) {
   return `Output ONLY a valid JSON object. No markdown, no prose, no code fences.
 
 Generate exactly ${totalSlides} slides. Theme: ${theme}.
-Bullets: 3 max, each under 10 words. Speaker notes: 1 sentence max.
+Slide 1 MUST be layout:title-only with no bullets (title slide only).
+All other slides MUST have layout:content-only OR title-content-visual-right OR title-content-visual-bottom.
+All slides except slide 1 MUST have bullets: exactly 2 or 3 concise bullet points (each under 12 words). Never leave bullets empty on non-title slides.
+Speaker notes: 1 sentence max.
 For needs_visual=true slides, set visual_data with real labels+values.
 visual_type: bar_chart|line_chart|pie_chart|flow_diagram|tree_diagram|block_diagram|none|auto
-layout: title-only|title-content-visual-right|title-content-visual-bottom|centered-visual|content-only
 No svg_code.
 
-{"presentation_title":"str","theme":"${theme}","slides":[{"id":1,"title":"str","subtitle":"str|null","bullets":["str"],"needs_visual":true,"visual_type":"bar_chart","visual_data":{"labels":["A","B"],"values":[10,20],"title":"str"},"layout":"title-content-visual-right","speaker_notes":"str"}]}`;
+{"presentation_title":"str","theme":"${theme}","slides":[{"id":1,"title":"str","subtitle":"str|null","bullets":["str","str"],"needs_visual":true,"visual_type":"bar_chart","visual_data":{"labels":["A","B"],"values":[10,20],"title":"str"},"layout":"title-content-visual-right","speaker_notes":"str"}]}`;
 }
 
 
@@ -384,9 +386,23 @@ Diagrams: ${diagrams_enabled}`;
 
     // ── Post-process slides ──
     parsed.slides = parsed.slides.map((slide, i) => {
-      // Enforce max 4 bullets server-side
+      // Enforce max 3 bullets server-side
       if (Array.isArray(slide.bullets)) {
-        slide.bullets = slide.bullets.slice(0, 4);
+        slide.bullets = slide.bullets.slice(0, 3);
+      }
+
+      // ── Bullet enforcement: every non-title slide needs 2-3 bullets ──
+      // Override 'title-only' layout on any slide that isn't the first one
+      if (i > 0 && slide.layout === 'title-only') {
+        slide.layout = 'content-only';
+      }
+      // Inject placeholder bullets if LLM left them empty on a non-title slide
+      if (i > 0 && (!Array.isArray(slide.bullets) || slide.bullets.length < 2)) {
+        const existing = Array.isArray(slide.bullets) ? slide.bullets : [];
+        while (existing.length < 2) {
+          existing.push(`Key point ${existing.length + 1} about ${slide.title || 'this topic'}.`);
+        }
+        slide.bullets = existing.slice(0, 3);
       }
 
       // Enforce user's explicit "no visual" preference for this slide title or index

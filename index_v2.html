@@ -1680,7 +1680,8 @@ function renderSlide(idx) {
 }
 
 function buildSlideHTML(slide, idx) {
-  const isTitleSlide = idx === 0 || slide.layout === 'title-only';
+  // Only idx===0 is the title slide — never trust layout:'title-only' from the LLM on other slides
+  const isTitleSlide = idx === 0;
   const author = presentationData?.author || '';
 
   if (isTitleSlide) {
